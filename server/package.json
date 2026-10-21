@@ -1,0 +1,46 @@
+{
+  "name": "@infographic-studio/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI Infographic Studio API server (Express + Mongoose).",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test --test-concurrency=2 \"tests/**/*.test.js\"",
+    "check:env": "node src/config/env.js --check",
+    "db:dev": "node scripts/devMongo.js",
+    "db:indexes": "node scripts/createIndexes.js",
+    "admin:bootstrap": "node scripts/bootstrapAdmin.js",
+    "test:live-kie": "node scripts/liveKieCheck.js",
+    "test:live-storage": "node scripts/liveStorageCheck.js",
+    "check:secrets": "node scripts/checkSecrets.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1142.0",
+    "@modelcontextprotocol/express": "^2.0.2",
+    "@modelcontextprotocol/node": "^2.1.1",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "mongoose": "^9.11.2",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.12",
+    "oidc-provider": "^9.12.2",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "jose": "^6.2.12",
+    "mongodb-memory-server-core": "^11.3.0",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.1"
+  }
+}

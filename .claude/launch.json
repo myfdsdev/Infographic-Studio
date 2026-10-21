@@ -1,0 +1,90 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "db",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "db:dev"
+      ],
+      "env": {
+        "DEV_MONGO_PORT": "27027"
+      },
+      "port": 27027
+    },
+    {
+      "name": "mock-kie",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server/scripts/devMockKie.js"
+      ],
+      "env": {
+        "DEV_MOCK_KIE_PORT": "5055",
+        "DEV_MOCK_KIE_KEY": "mocktest_ae9f095f6c66cf1cbf65"
+      },
+      "port": 5055
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:server"
+      ],
+      "port": 5000
+    },
+    {
+      "name": "api-mock-kie",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:server"
+      ],
+      "env": {
+        "KIE_API_BASE_URL": "http://127.0.0.1:5055",
+        "KIE_UPLOAD_BASE_URL": "http://127.0.0.1:5055"
+      },
+      "port": 5000
+    },
+    {
+      "name": "api-local-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:server"
+      ],
+      "env": {
+        "MONGODB_URI": "mongodb://127.0.0.1:27027",
+        "MONGODB_DB_NAME": "ai_infographic_studio",
+        "KIE_API_BASE_URL": "http://127.0.0.1:5055",
+        "KIE_UPLOAD_BASE_URL": "http://127.0.0.1:5055",
+        "PORT": "5001",
+        "CLIENT_URL": "http://localhost:5174"
+      },
+      "port": 5001
+    },
+    {
+      "name": "client",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:client"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "client-local",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:client"
+      ],
+      "env": {
+        "VITE_DEV_PORT": "5174",
+        "VITE_DEV_API_PROXY": "http://localhost:5001"
+      },
+      "port": 5174
+    }
+  ]
+}

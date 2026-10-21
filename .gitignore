@@ -1,0 +1,50 @@
+# ---- dependencies ----
+node_modules/
+
+# ---- secrets / environment ----
+.env
+.env.*
+!.env.example
+
+# ---- build output ----
+client/dist/
+server/dist/
+dist/
+build/
+
+# ---- runtime data (local storage driver, job scratch, media temp) ----
+server/storage/
+server/.mongo-data/
+server/uploads/
+server/tmp/
+tmp/
+temp/
+*.tmp
+
+# ---- logs ----
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ---- test artifacts ----
+coverage/
+.nyc_output/
+tests/e2e/results/
+playwright-report/
+test-results/
+
+# ---- caches ----
+.cache/
+.vite/
+.eslintcache
+
+# ---- editors / OS ----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini

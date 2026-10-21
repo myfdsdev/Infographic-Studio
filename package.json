@@ -1,0 +1,31 @@
+{
+  "name": "ai-infographic-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Infographic Studio - BYOK infographic generator (Kie.ai Z-Image) built on MongoDB, Express, React and Node, with MCP and an admin panel.",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server",
+    "preview": "npm run preview -w client",
+    "test": "npm run test -w server",
+    "check:env": "npm run check:env -w server",
+    "db:dev": "npm run db:dev -w server",
+    "db:indexes": "npm run db:indexes -w server",
+    "admin:bootstrap": "npm run admin:bootstrap -w server --"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
