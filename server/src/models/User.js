@@ -27,6 +27,11 @@ const userSchema = new mongoose.Schema(
     suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     lastLoginAt: { type: Date, default: null },
     passwordChangedAt: { type: Date, default: null },
+    // Platform credits, spent before the user's own provider key (see
+    // credit.service.js). Changed only with atomic $inc updates.
+    credits: { type: Number, default: 0, min: 0 },
+    // The bonus link this account signed up through, if any.
+    bonusLinkId: { type: mongoose.Schema.Types.ObjectId, ref: 'BonusLink', default: null },
   },
   { timestamps: true, versionKey: false },
 );
@@ -36,6 +41,7 @@ userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: { $type: 'string' } } });
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ createdAt: -1 });
+userSchema.index({ bonusLinkId: 1, createdAt: -1 }, { partialFilterExpression: { bonusLinkId: { $type: 'objectId' } } });
 
 export const User = mongoose.models.User || mongoose.model('User', userSchema);
 export default User;

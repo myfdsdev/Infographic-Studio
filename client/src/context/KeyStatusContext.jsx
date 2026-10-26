@@ -6,26 +6,30 @@ import { PROVIDER } from '../utils/constants.js';
 export const KeyStatusContext = createContext(null);
 
 /**
- * The signed-in user's own Kie.ai key status (masked: status and last four
- * characters only; the key itself never reaches the browser). Shared by the
- * top header, the generator and API Settings so they stay in step.
+ * How the signed-in user can generate: platform credits (spent first) and
+ * their own Kie.ai key (masked: status and last four characters only; the key
+ * itself never reaches the browser). Shared by the top header, the generator
+ * and API Settings so they stay in step.
  */
 export function KeyStatusProvider({ children }) {
   const { isPreview, user } = useAuth();
-  const [state, setState] = useState({ credential: null, loading: true, error: null });
+  const [state, setState] = useState({ credential: null, credits: null, loading: true, error: null });
 
   const reload = useCallback(async () => {
     if (isPreview) {
-      setState({ credential: null, loading: false, error: null });
+      setState({ credential: null, credits: null, loading: false, error: null });
       return;
     }
     setState((prev) => ({ ...prev, loading: true }));
     try {
-      const result = await settingsApi.listCredentials();
+      const [result, credits] = await Promise.all([
+        settingsApi.listCredentials(),
+        settingsApi.getCredits().catch(() => null),
+      ]);
       const credential = (result?.items || []).find((item) => item.provider === PROVIDER.key) || null;
-      setState({ credential, loading: false, error: null });
+      setState({ credential, credits, loading: false, error: null });
     } catch (error) {
-      setState({ credential: null, loading: false, error });
+      setState({ credential: null, credits: null, loading: false, error });
     }
   }, [isPreview]);
 
@@ -33,7 +37,17 @@ export function KeyStatusProvider({ children }) {
     reload();
   }, [reload, user?.id]);
 
-  const setCredential = useCallback((credential) => setState({ credential, loading: false, error: null }), []);
+  // A saved or removed key changes what pays next, so credits are re-read too.
+  const setCredential = useCallback(
+    (credential) => {
+      setState((prev) => ({ ...prev, credential, loading: false, error: null }));
+      settingsApi
+        .getCredits()
+        .then((credits) => setState((prev) => ({ ...prev, credits })))
+        .catch(() => {});
+    },
+    [],
+  );
 
   const value = useMemo(() => {
     const { credential } = state;
@@ -43,7 +57,10 @@ export function KeyStatusProvider({ children }) {
     if (credential?.status === 'invalid') status = 'invalid';
     else if (credential?.status === 'unverified') status = 'unverified';
     else if (credential) status = 'connected';
-    return { ...state, status, usable: status === 'connected' || status === 'unverified', reload, setCredential };
+    const keyUsable = status === 'connected' || status === 'unverified';
+    // 'credits', 'own_key' or null: what the next generation is paid with.
+    const nextSource = state.credits ? state.credits.nextSource : keyUsable ? 'own_key' : null;
+    return { ...state, status, keyUsable, nextSource, usable: Boolean(nextSource), reload, setCredential };
   }, [state, reload, setCredential]);
 
   return <KeyStatusContext.Provider value={value}>{children}</KeyStatusContext.Provider>;

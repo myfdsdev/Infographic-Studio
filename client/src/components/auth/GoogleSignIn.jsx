@@ -39,9 +39,14 @@ export function useGoogleAvailable() {
   return available;
 }
 
-export function googleStartUrl(returnTo) {
+export function googleStartUrl(returnTo, { bonusCode } = {}) {
   const path = typeof returnTo === 'string' && returnTo.startsWith('/') && returnTo !== '/' ? returnTo : '';
-  return `${API_BASE_URL}/auth/google/start${path ? `?returnTo=${encodeURIComponent(path)}` : ''}`;
+  const params = new URLSearchParams();
+  if (path) params.set('returnTo', path);
+  // A bonus link's credits are given only if Google creates a new account.
+  if (bonusCode) params.set('bonus', bonusCode);
+  const query = params.toString();
+  return `${API_BASE_URL}/auth/google/start${query ? `?${query}` : ''}`;
 }
 
 export const GOOGLE_CONNECT_URL = `${API_BASE_URL}/auth/google/connect`;

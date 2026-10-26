@@ -15,6 +15,7 @@ import {
   ScrollText,
   Terminal,
   Palette,
+  Gift,
   WandSparkles,
   ListOrdered,
   Workflow,
@@ -65,6 +66,7 @@ export const ROUTES = Object.freeze({
   adminAuditLogs: '/admin/audit-logs',
   adminOperations: '/admin/operations',
   adminBranding: '/admin/branding',
+  adminBonusLinks: '/admin/bonus-links',
 });
 
 // Top navigation tabs (desktop). Admin is added for admins only.
@@ -135,6 +137,7 @@ export const ADMIN_TABS = Object.freeze([
   { key: 'access', label: 'Access', to: ROUTES.adminAccess, icon: SlidersHorizontal },
   { key: 'audit', label: 'Audit Logs', to: ROUTES.adminAuditLogs, icon: ScrollText },
   { key: 'operations', label: 'Operations', to: ROUTES.adminOperations, icon: Terminal },
+  { key: 'bonus', label: 'Bonus Links', to: ROUTES.adminBonusLinks, icon: Gift },
   { key: 'branding', label: 'Branding', to: ROUTES.adminBranding, icon: Palette },
 ]);
 

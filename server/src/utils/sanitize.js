@@ -50,6 +50,7 @@ export function toPublicUser(user) {
     status: user.status,
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt || null,
+    credits: user.credits || 0,
   };
 }
 
@@ -64,6 +65,7 @@ export function toAdminUser(user) {
     suspendedReason: user.suspendedReason || null,
     suspendedBy: user.suspendedBy ? String(user.suspendedBy) : null,
     googleConnected: Boolean(user.googleId),
+    bonusLinkId: user.bonusLinkId ? String(user.bonusLinkId) : null,
   };
 }
 

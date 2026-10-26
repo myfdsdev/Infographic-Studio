@@ -25,7 +25,8 @@ import { AppError } from '../utils/errors.js';
 import { normalizeEmail } from '../utils/sanitize.js';
 import { recordAudit } from './audit.service.js';
 import { assertSignupAllowed, assertAppAccess } from './platformSettings.service.js';
-import { createSession } from './auth.service.js';
+import { createSession, grantSignupBonus } from './auth.service.js';
+import { BONUS_CODE_SHAPE } from './bonusLink.service.js';
 
 export const GOOGLE_FLOW_COOKIE = 'iv_google';
 const FLOW_PATH = '/api/auth/google';
@@ -89,7 +90,7 @@ export function safeReturnTo(value) {
 }
 
 /** Start a sign-in ("login") or a connect-from-settings ("link") flow. */
-export function beginGoogleFlow({ mode, userId = null, returnTo = '/' }) {
+export function beginGoogleFlow({ mode, userId = null, returnTo = '/', bonusCode = null }) {
   const state = crypto.randomBytes(32).toString('base64url');
   const nonce = crypto.randomBytes(32).toString('base64url');
   const verifier = crypto.randomBytes(48).toString('base64url');
@@ -101,6 +102,7 @@ export function beginGoogleFlow({ mode, userId = null, returnTo = '/' }) {
     nonce,
     verifier,
     returnTo: safeReturnTo(returnTo),
+    bonus: typeof bonusCode === 'string' && BONUS_CODE_SHAPE.test(bonusCode) ? bonusCode : null,
     exp: Date.now() + FLOW_TTL_MS,
   };
   const url = new URL(env.GOOGLE_AUTH_URL);
@@ -205,7 +207,7 @@ function displayName(google) {
 }
 
 /** Sign in (or sign up) with a verified Google identity. Returns { user, token, session, created }. */
-export async function signInWithGoogle(google, req) {
+export async function signInWithGoogle(google, req, { bonusCode = null } = {}) {
   let created = false;
   let user = await User.findOne({ googleId: google.sub });
   if (!user) {
@@ -281,6 +283,7 @@ export async function signInWithGoogle(google, req) {
     target: auditTarget(user),
     metadata: { method: 'google' },
   });
+  if (created) await grantSignupBonus(user, bonusCode, req);
   return { user, token, session, created };
 }
 

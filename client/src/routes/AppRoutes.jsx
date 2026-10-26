@@ -30,6 +30,7 @@ import AccessSettings from '../pages/admin/AccessSettings.jsx';
 import AuditLogs from '../pages/admin/AuditLogs.jsx';
 import Operations from '../pages/admin/Operations.jsx';
 import Branding from '../pages/admin/Branding.jsx';
+import BonusLinks from '../pages/admin/BonusLinks.jsx';
 
 export default function AppRoutes() {
   return (
@@ -71,6 +72,7 @@ export default function AppRoutes() {
               <Route path="access" element={<AccessSettings />} />
               <Route path="audit-logs" element={<AuditLogs />} />
               <Route path="operations" element={<Operations />} />
+              <Route path="bonus-links" element={<BonusLinks />} />
               <Route path="branding" element={<Branding />} />
             </Route>
           </Route>

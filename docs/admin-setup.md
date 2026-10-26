@@ -7,7 +7,7 @@
 
 Public signup **never** creates an admin, including the very first account. `role`, `status` and `email` are rejected by the profile validator. They can only change through the admin service, which writes an `AuditLog` entry.
 
-Administrators generate with their **own** Kie.ai key like everyone else. There is no admin or platform key (strict BYOK).
+Administrators generate like everyone else: with credits while they have them, then with their own Kie.ai key. The **platform** Kie.ai key (Admin > Provider) pays only for credit-paid infographics; see [Credits and bonus links](#credits-and-bonus-links).
 
 ## Creating the owner admin (one time)
 
@@ -33,16 +33,27 @@ The Admin Panel (`/admin`) shows its sections as one row of tabs. Every page rea
 |---|---|
 | Overview | Generation usage: all-time results, success rate, the most used infographic types and styles, and how many were started through MCP. Also provider jobs and MCP activity in the last 24 hours, system health (MongoDB, storage, email delivery) and recent sign-ups. |
 | Users | Search by name or email, filter by status and role, export CSV, open a user. |
-| User details | Account facts, active sessions, usage (infographics, completed, failed, jobs), Kie.ai key **status only**, and AI connections with **Revoke**. Also recent activity, suspend or reactivate with a reason, and change role. You cannot change your own account, and the last active admin cannot be removed. Suspension ends sessions and blocks AI-app tokens at once. **Act as user** is described below. |
+| User details | Account facts, **credits** (add or remove, with a note, and the history), active sessions, usage (infographics, completed, failed, jobs), Kie.ai key **status only**, and AI connections with **Revoke**. Also recent activity, suspend or reactivate with a reason, and change role. You cannot change your own account, and the last active admin cannot be removed. Suspension ends sessions and blocks AI-app tokens at once. **Act as user** is described below. |
 | Generations | Every user's infographics, newest first, with user email, title, style, ratio, source (web or MCP), status and redacted error. Search by email, title or id; filter by status. Prompts and keys are never shown. |
 | Jobs | Every provider job across users, with filters, a prompt preview only, and cancel and retry. Retrying a job that may already have reached Kie.ai asks for confirmation. |
 | Failures | Failed jobs of the last 1, 7 or 30 days, grouped by error code with counts, models, the latest time and an example message. Messages are redacted on the server; prompts are never shown. |
 | MCP | Server status and URL, active connections, tool calls and failed calls per tool for a chosen range, recent tool failures, and every user's AI connections with **Revoke** (the app's tokens stop working on the next request). |
-| Provider | Kie.ai hosts, the number of saved user keys (and rejected ones), and every image model with its use and failures in the last 24 hours. Turning a model **off** refuses it in the API and in MCP tools. Turning off **Z-Image** stops all infographic generation. |
-| Access | **Allow new sign-ups**. **Maintenance mode**: only administrators can sign in, while users and AI apps get the message. **Allow new generations**: when off, nothing new reaches Kie.ai and queued jobs wait. **Allow AI apps (MCP)**. **Jobs per user at the provider** (1 to 20) and **jobs per worker process** (1 to 50). Settings are saved in the database and applied within a few seconds by every API instance. |
+| Provider | The **platform Kie.ai key** (save, test, replace, remove; only its last 4 characters are shown). Kie.ai hosts, the number of saved user keys (and rejected ones), and every image model with its use and failures in the last 24 hours. Turning a model **off** refuses it in the API and in MCP tools. Turning off **Z-Image** stops all infographic generation. |
+| Access | **Allow new sign-ups**. **Maintenance mode**: only administrators can sign in, while users and AI apps get the message. **Allow new generations**: when off, nothing new reaches Kie.ai and queued jobs wait. **Allow AI apps (MCP)**. **Credits per infographic** (default 10). **Jobs per user at the provider** (1 to 20) and **jobs per worker process** (1 to 50). Settings are saved in the database and applied within a few seconds by every API instance. |
 | Audit Logs | Sign-ins, password, account, key, infographic, AI-connection and admin actions, filterable by area (including `mcp`) and outcome. Secrets are scrubbed before storage. |
 | Operations | The running system (database, worker queue, storage, email, MCP, process) and the server's warnings and errors of the last 14 days, searchable, with context. Entries are copied after the logger's redaction and redacted again. Client errors (4xx) are not kept. |
+| Bonus Links | Create sign-up links that give new accounts free credits, with an optional sign-up limit and expiry date. Copy a link, switch it on or off, and see its sign-ups and the credits given. See below. |
 | Branding | App name, tagline, accent colour, logo and favicon, with a live preview. See below. |
+
+## Credits and bonus links
+
+1. **Save the platform key.** Admin > Provider > **Platform Kie.ai key**. It is checked with a free balance call, then encrypted with `ENCRYPTION_KEY`. Without it, credits cannot be spent and everyone generates on their own key, exactly as before.
+2. **Set the price.** Admin > Access > **Credits per infographic** (default 10). It applies to new generations.
+3. **Give credits.** Create a bonus link in Admin > **Bonus Links**, or add credits to one account in its User details. New accounts start with 0 credits.
+
+A bonus link looks like `CLIENT_URL/signup?bonus=<code>`. Only an account **created** through it (email or Google sign-up) gets the credits, once. An expired, switched-off or fully claimed link still lets people sign up, without credits. The sign-up limit is enforced atomically, so it holds under simultaneous sign-ups.
+
+Credits are reserved when a generation starts and refunded once if it fails or is cancelled. Every change is in the user's credit history and the audit log. If Kie.ai rejects the platform key, credit-paid generation pauses (users with their own key keep generating) until you replace it.
 
 ## Branding
 

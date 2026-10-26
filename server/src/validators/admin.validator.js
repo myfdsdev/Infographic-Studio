@@ -65,3 +65,34 @@ export const adminInfographicsQuery = z.object({
 });
 
 export const mcpMonitorQuery = z.object({ days: z.coerce.number().int().min(1).max(30).default(7) });
+
+export const creditAdjustmentBody = z.strictObject({
+  amount: z
+    .number({ error: 'Enter a whole number of credits' })
+    .int('Enter a whole number of credits')
+    .min(-100000)
+    .max(100000)
+    .refine((value) => value !== 0, 'Enter a number other than 0'),
+  note: z.string().trim().max(200).optional(),
+});
+
+const futureDate = z
+  .string()
+  .datetime({ offset: true, error: 'Enter a valid date' })
+  .refine((value) => new Date(value) > new Date(), 'The expiry date must be in the future');
+
+export const createBonusLinkBody = z.strictObject({
+  name: z.string({ error: 'Give the link a name' }).trim().min(2, 'Name is too short').max(80),
+  credits: z.number({ error: 'Enter the credits to give' }).int().min(1, 'Give at least 1 credit').max(100000),
+  maxUses: z.number().int().min(1).max(1000000).nullable().optional(),
+  expiresAt: futureDate.nullable().optional(),
+});
+
+export const updateBonusLinkBody = z
+  .strictObject({
+    name: z.string().trim().min(2).max(80).optional(),
+    enabled: z.boolean().optional(),
+    maxUses: z.number().int().min(1).max(1000000).nullable().optional(),
+    expiresAt: futureDate.nullable().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, 'Nothing to change');

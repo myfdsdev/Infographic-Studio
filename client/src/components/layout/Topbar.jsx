@@ -16,10 +16,26 @@ const KEY_LABELS = {
   invalid: { label: 'Key rejected', tone: 'bad', title: 'Kie.ai rejected your key. Replace it in API Settings.' },
 };
 
+/** Credits while they pay, otherwise the own key's status. */
+function chipFor({ status, credits, nextSource }) {
+  if (credits?.platformAvailable && nextSource === 'credits') {
+    const left = credits.infographicsLeft;
+    return {
+      label: `${credits.credits} credits`,
+      tone: 'ok',
+      title: `${left} infographic${left === 1 ? '' : 's'} left on credits (${credits.creditsPerInfographic} each), then your own Kie.ai key`,
+    };
+  }
+  if (credits?.platformAvailable && !nextSource) {
+    return { label: 'Out of credits', tone: 'bad', title: 'Add your own Kie.ai key in API Settings to keep generating' };
+  }
+  return KEY_LABELS[status];
+}
+
 function KeyStatus() {
-  const { status, loading } = useKeyStatus();
-  if (loading) return null;
-  const entry = KEY_LABELS[status];
+  const keyStatus = useKeyStatus();
+  if (keyStatus.loading && !keyStatus.credits) return null;
+  const entry = chipFor(keyStatus);
   return (
     <Link to={ROUTES.apiSettings} className={`iv-key-status iv-key-status--${entry.tone}`} title={entry.title} aria-label={entry.label}>
       <span className="iv-key-status__label">{entry.label}</span>

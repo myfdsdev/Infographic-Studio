@@ -24,6 +24,7 @@ function settingsDto(settings) {
   return {
     access: settings.access,
     limits: settings.limits,
+    credits: settings.credits,
     disabledModels: settings.models.disabled,
     updatedAt: settings.updatedAt,
     updatedBy: settings.updatedBy,

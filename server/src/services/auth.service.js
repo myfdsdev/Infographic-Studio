@@ -26,6 +26,8 @@ import { clientIp, normalizeEmail, toPublicUser, userAgentOf } from '../utils/sa
 import { recordAudit } from './audit.service.js';
 import { assertSignupAllowed, assertAppAccess } from './platformSettings.service.js';
 import { getBranding } from './branding.service.js';
+import { claimBonusForNewUser } from './bonusLink.service.js';
+import { CreditTransaction } from '../models/CreditTransaction.js';
 import { sendEmail, passwordResetEmail } from './email.service.js';
 
 export const SESSION_COOKIE = 'iv_session';
@@ -127,7 +129,18 @@ export async function revokeAllSessions(userId, { exceptSessionId = null, reason
 }
 
 // ---- signup / login / logout -------------------------------------------------
-export async function signup({ name, email, password }, req) {
+/** Bonus link credits for a new account; a failure never breaks the sign-up. */
+export async function grantSignupBonus(user, bonusCode, req) {
+  if (!bonusCode) return null;
+  try {
+    return await claimBonusForNewUser(user, bonusCode, req);
+  } catch (error) {
+    logger.error({ userId: String(user._id), reason: error.message }, 'Sign-up bonus could not be granted');
+    return null;
+  }
+}
+
+export async function signup({ name, email, password, bonusCode }, req) {
   await assertSignupAllowed();
   const normalized = normalizeEmail(email);
   const passwordHash = await hashPassword(password);
@@ -149,7 +162,9 @@ export async function signup({ name, email, password }, req) {
   user.lastLoginAt = new Date();
   await user.save();
   await recordAudit({ req, actor: user, action: 'auth.signup', area: 'auth', target: { type: 'user', id: user._id, email: user.email } });
-  return { user, token, session };
+  const bonus = await grantSignupBonus(user, bonusCode, req);
+  if (bonus) user.credits = (user.credits || 0) + bonus.credits;
+  return { user, token, session, bonus };
 }
 
 export async function login({ email, password, remember = true }, req) {
@@ -410,6 +425,7 @@ export async function deleteAccount(user, { password, confirmEmail }, req) {
   await ApiCredential.deleteMany({ userId: user._id });
   await GenerationJob.deleteMany({ userId: user._id });
   await Infographic.deleteMany({ userId: user._id });
+  await CreditTransaction.deleteMany({ userId: user._id });
   // AI app connections: tokens revoked at once, records removed.
   await deleteAllConnectionsOf(user._id);
   await removeAllAssetsOf(user._id);

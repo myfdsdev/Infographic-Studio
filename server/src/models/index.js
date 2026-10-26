@@ -11,6 +11,8 @@ import Asset from './Asset.js';
 import Infographic from './Infographic.js';
 import McpConnection from './McpConnection.js';
 import OpsLog from './OpsLog.js';
+import CreditTransaction from './CreditTransaction.js';
+import BonusLink from './BonusLink.js';
 import { ensureOAuthIndexes } from '../mcp/oauthStore.js';
 
 export const allModels = Object.freeze([
@@ -25,6 +27,8 @@ export const allModels = Object.freeze([
   Infographic,
   McpConnection,
   OpsLog,
+  CreditTransaction,
+  BonusLink,
 ]);
 
 /** Create any missing indexes. Non-destructive: existing indexes are kept. */
@@ -44,4 +48,18 @@ export async function ensureIndexes() {
   return results;
 }
 
-export { User, Session, PasswordResetToken, AuditLog, AppSettings, ApiCredential, GenerationJob, Asset, Infographic, McpConnection, OpsLog };
+export {
+  User,
+  Session,
+  PasswordResetToken,
+  AuditLog,
+  AppSettings,
+  ApiCredential,
+  GenerationJob,
+  Asset,
+  Infographic,
+  McpConnection,
+  OpsLog,
+  CreditTransaction,
+  BonusLink,
+};

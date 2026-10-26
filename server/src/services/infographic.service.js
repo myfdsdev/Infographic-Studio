@@ -1,19 +1,20 @@
 // Infographics: the one feature of AI Infographic Studio.
 //
-//   createInfographic -> job.service.createJob (Z-Image on Kie.ai, with
-//   the user's OWN key; no shared key exists) -> the worker submits and polls
+//   createInfographic -> credit.service decides how it is paid (platform
+//   credits on the platform key, else the user's OWN key) ->
+//   job.service.createJob (Z-Image on Kie.ai) -> the worker submits and polls
 //   the provider -> processInfographics (worker step) downloads the finished
-//   image and stores it privately as an Asset.
+//   image and stores it privately as an Asset, or refunds credits if it failed.
 //
 // The dashboard routes and the MCP tools both call this service, so
-// validation, ownership, BYOK and duplicate protection are identical.
+// validation, ownership, billing and duplicate protection are identical.
 import { Infographic, INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS, INFOGRAPHIC_LAYOUTS } from '../models/Infographic.js';
 import { GenerationJob } from '../models/GenerationJob.js';
 import { getProvider } from '../providers/providerRegistry.js';
 import { TERMINAL_STATUSES } from '../jobs/queue.js';
 import { logger } from '../config/logger.js';
 import { createJob, toJobDto } from './job.service.js';
-import { getDecryptedKey } from './credential.service.js';
+import * as credits from './credit.service.js';
 import * as assetService from './asset.service.js';
 import { recordAudit } from './audit.service.js';
 import { buildInfographicPrompt, cleanTopic, titleFromTopic, describeOptions, TOPIC_MIN, TOPIC_MAX, LEGACY_RATIOS } from './infographicPrompt.js';
@@ -50,6 +51,11 @@ export function toInfographicDto(item, job = null) {
     style: item.style,
     layout: item.layout || 'auto',
     aspectRatio: item.aspectRatio,
+    billing: {
+      paidWith: item.billing?.source === 'platform' ? 'credits' : 'own_key',
+      credits: item.billing?.credits || 0,
+      refunded: Boolean(item.billing?.refundedAt),
+    },
     model: item.model,
     source: item.source,
     status: item.status,
@@ -85,24 +91,43 @@ function validateInput({ topic, style, aspectRatio, layout = 'auto' }) {
 }
 
 /**
- * Start an infographic. Throws NO_API_KEY / API_KEY_INVALID before anything
- * is created when the user has no usable key of their own.
+ * Start an infographic. It is paid with platform credits when the user has
+ * enough, otherwise with the user's own key. Throws NO_CREDITS / NO_API_KEY /
+ * API_KEY_INVALID before anything is created when neither is available.
  */
 export async function createInfographic(user, body, { idempotencyKey, source = 'web', regeneratedFrom = null, req } = {}) {
   const input = validateInput(body || {});
   const prompt = buildInfographicPrompt(input);
 
-  const { job, deduplicated } = await createJob(user, {
-    kind: 'image',
-    provider: PROVIDER_KEY,
-    model: INFOGRAPHIC_MODEL,
-    params: { prompt, aspectRatio: input.aspectRatio },
-    subjectType: 'infographic',
-    subjectMeta: { style: input.style, layout: input.layout, aspectRatio: input.aspectRatio, source },
-    idempotencyKey,
-  });
+  // A repeated request (same Idempotency-Key) returns the first result before
+  // any credits are looked at, so a double click never pays or fails twice.
+  if (idempotencyKey) {
+    const earlier = await GenerationJob.findOne({ userId: user._id, idempotencyKey }).lean();
+    const existing = earlier && (await Infographic.findOne({ userId: user._id, jobId: earlier._id }));
+    if (existing) return { infographic: toInfographicDto(existing, earlier), deduplicated: true };
+  }
+
+  const billing = await credits.reserveForInfographic(user);
+  let created;
+  try {
+    created = await createJob(user, {
+      kind: 'image',
+      provider: PROVIDER_KEY,
+      model: INFOGRAPHIC_MODEL,
+      params: { prompt, aspectRatio: input.aspectRatio },
+      subjectType: 'infographic',
+      subjectMeta: { style: input.style, layout: input.layout, aspectRatio: input.aspectRatio, source },
+      idempotencyKey,
+      keySource: billing.source,
+    });
+  } catch (error) {
+    await credits.releaseReservation(user._id, billing);
+    throw error;
+  }
+  const { job, deduplicated } = created;
 
   if (deduplicated) {
+    await credits.releaseReservation(user._id, billing);
     const existing = await Infographic.findOne({ userId: user._id, jobId: job._id });
     if (existing) return { infographic: toInfographicDto(existing, job), deduplicated: true };
   }
@@ -118,10 +143,12 @@ export async function createInfographic(user, body, { idempotencyKey, source = '
     prompt,
     source,
     regeneratedFrom,
+    billing: deduplicated ? { source: job.keySource || 'user', credits: 0 } : { source: billing.source, credits: billing.credits },
     jobId: job._id,
     status: job.status === 'processing' ? 'processing' : 'queued',
   });
   await GenerationJob.updateOne({ _id: job._id, subjectId: null }, { $set: { subjectId: String(item._id) } });
+  if (!deduplicated) await credits.recordSpend(user._id, billing, item._id);
 
   await recordAudit({
     req,
@@ -129,8 +156,18 @@ export async function createInfographic(user, body, { idempotencyKey, source = '
     action: source === 'mcp' ? 'infographic.created_via_mcp' : 'infographic.created',
     area: 'account',
     target: { type: 'infographic', id: item._id },
-    summary: `Infographic started (${input.layout}, ${input.style}, ${input.aspectRatio})${regeneratedFrom ? ' as a regeneration' : ''}`,
-    metadata: { style: input.style, layout: input.layout, aspectRatio: input.aspectRatio, source, topicLength: input.topic.length },
+    summary: `Infographic started (${input.layout}, ${input.style}, ${input.aspectRatio}, ${
+      billing.source === 'platform' ? `${billing.credits} credits` : 'own key'
+    })${regeneratedFrom ? ' as a regeneration' : ''}`,
+    metadata: {
+      style: input.style,
+      layout: input.layout,
+      aspectRatio: input.aspectRatio,
+      source,
+      topicLength: input.topic.length,
+      paidWith: billing.source,
+      credits: billing.credits,
+    },
   });
 
   return { infographic: toInfographicDto(item, job), deduplicated: false };
@@ -242,12 +279,13 @@ async function saveFinished(item, job) {
       'error.message': String(job.error?.message || (cancelled ? 'The generation was cancelled.' : 'The infographic could not be generated.')).slice(0, 1000),
       completedAt: job.completedAt || new Date(),
     });
+    await credits.refundInfographic(Infographic, item);
     return 'failed';
   }
   const url = job.result?.urls?.[0];
   try {
     if (!url) throw new AppError('The provider returned no image.', { statusCode: 502, code: 'RESULT_MISSING' });
-    const stored = await getDecryptedKey(item.userId, PROVIDER_KEY).catch(() => null);
+    const stored = await credits.getJobKey(job).catch(() => null);
     let file;
     try {
       file = await assetService.downloadGeneratedFile(url, { provider: provider(), apiKey: stored?.apiKey });
@@ -281,6 +319,7 @@ async function saveFinished(item, job) {
         'error.message': `The image was generated but could not be saved: ${error.message}`.slice(0, 1000),
         completedAt: new Date(),
       });
+      await credits.refundInfographic(Infographic, item);
       return 'failed';
     }
     // Leave the claim to run out, then try again.

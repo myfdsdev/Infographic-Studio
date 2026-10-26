@@ -12,6 +12,8 @@ export const adminApi = {
   getUser: (id, options) => api.get(`/admin/users/${enc(id)}`, options),
   updateUser: (id, data) => api.patch(`/admin/users/${enc(id)}`, data),
   actAs: (id) => api.post(`/admin/users/${enc(id)}/act-as`),
+  userCredits: (id, options) => api.get(`/admin/users/${enc(id)}/credits`, options),
+  adjustCredits: (id, { amount, note }) => api.post(`/admin/users/${enc(id)}/credits`, note ? { amount, note } : { amount }),
 
   getSettings: (options) => api.get('/admin/settings', options),
   updateSettings: (data) => api.patch('/admin/settings', data),
@@ -23,6 +25,16 @@ export const adminApi = {
 
   listProviders: (options) => api.get('/admin/providers', options),
   setModel: (provider, model, enabled) => api.put(`/admin/providers/${enc(provider)}/models`, { model, enabled }),
+
+  getPlatformKey: (options) => api.get('/admin/platform-key', options),
+  savePlatformKey: (apiKey) => api.put('/admin/platform-key', { apiKey }),
+  testPlatformKey: () => api.post('/admin/platform-key/test', {}),
+  deletePlatformKey: () => api.delete('/admin/platform-key'),
+
+  listBonusLinks: (options) => api.get('/admin/bonus-links', options),
+  createBonusLink: (data) => api.post('/admin/bonus-links', data),
+  getBonusLink: (id, options) => api.get(`/admin/bonus-links/${enc(id)}`, options),
+  updateBonusLink: (id, data) => api.patch(`/admin/bonus-links/${enc(id)}`, data),
 
   listInfographics: (query, options) => api.get('/admin/infographics', { ...options, query }),
   mcpMonitor: (query, options) => api.get('/admin/mcp/monitor', { ...options, query }),

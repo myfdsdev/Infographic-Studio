@@ -10,7 +10,7 @@ Stack: MongoDB + Mongoose, Express 5, React 19 + Vite, Node.js 20.19+. The UI is
 
 ## Key rules
 
-- **Strict BYOK (bring your own key).** Every generation runs on the requesting user's own Kie.ai key, which is saved in **API Settings** and encrypted at rest (AES-256-GCM). The platform has no shared key and no admin key. Without a usable key, nothing is created and the API answers `NO_API_KEY` or `API_KEY_INVALID`.
+- **Credits first, then bring your own key.** Every infographic is paid in one of two ways. **Platform credits first:** while the user has enough credits (an admin setting, 10 per infographic by default), the infographic runs on the **platform's** Kie.ai key, which an administrator saves encrypted in Admin > Provider. **Then the user's own key (BYOK):** when credits run out, it runs on the key the user saved in **API Settings**, encrypted at rest (AES-256-GCM). With neither, nothing is created and the API answers `NO_CREDITS`, `NO_API_KEY` or `API_KEY_INVALID`. New accounts start with 0 credits; credits come from bonus sign-up links and admin top-ups, and a failed generation refunds them.
 - **Accuracy.** The prompt builder tells the model not to invent statistics, numbers, dates, quotes or sources. Figures should come from the user's topic.
 - **Private files.** Generated images are copied into private storage (local disk in development, an S3-compatible bucket in production). They are served only to their owner.
 

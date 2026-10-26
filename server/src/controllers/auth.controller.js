@@ -7,9 +7,9 @@ import { logger } from '../config/logger.js';
 import { AppError } from '../utils/errors.js';
 
 export async function signup(req, res) {
-  const { user, token, session } = await authService.signup(req.validated.body, req);
+  const { user, token, session, bonus } = await authService.signup(req.validated.body, req);
   authService.setSessionCookie(res, token, session);
-  res.status(201).json({ user: authService.publicUser(user) });
+  res.status(201).json({ user: authService.publicUser(user), bonus: bonus || null });
 }
 
 export async function login(req, res) {
@@ -60,7 +60,10 @@ function startFlow(res, options) {
 export async function googleStart(req, res) {
   if (!env.googleEnabled) return res.redirect(302, clientUrl('/login', { google: 'unavailable' }));
   const returnTo = typeof req.query.returnTo === 'string' ? req.query.returnTo : '/';
-  startFlow(res, { mode: 'login', returnTo });
+  // A bonus code from /signup?bonus=... rides in the sealed flow cookie and is
+  // claimed only if Google sign-in creates a new account.
+  const bonusCode = typeof req.query.bonus === 'string' ? req.query.bonus : null;
+  startFlow(res, { mode: 'login', returnTo, bonusCode });
 }
 
 /** Connect Google to the signed-in account (from Account settings). */
@@ -84,7 +87,7 @@ export async function googleCallback(req, res) {
       await googleAuth.connectGoogle(req.user, google, req);
       return res.redirect(302, clientUrl('/settings/account', { google: 'connected' }));
     }
-    const { token, session } = await googleAuth.signInWithGoogle(google, req);
+    const { token, session } = await googleAuth.signInWithGoogle(google, req, { bonusCode: flow.bonus });
     authService.setSessionCookie(res, token, session);
     return res.redirect(302, clientUrl(flow.returnTo));
   } catch (error) {

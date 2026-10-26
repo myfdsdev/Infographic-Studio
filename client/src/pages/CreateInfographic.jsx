@@ -103,8 +103,23 @@ function stepsFor(item) {
   ];
 }
 
-function KeyCallout({ status }) {
-  if (status === "connected" || status === "unverified") return null;
+function KeyCallout({ keyStatus }) {
+  const { status, nextSource, credits } = keyStatus;
+  if (nextSource) return null;
+  if (credits?.platformAvailable) {
+    return (
+      <div className="iv-composer__notice" role="status">
+        <KeyRound size={16} aria-hidden="true" />
+        <span>
+          <strong>You are out of credits.</strong> Add your own Kie.ai API key
+          to keep generating.
+        </span>
+        <Link to={ROUTES.apiSettings} className="iv-composer__notice-link">
+          Add key <ArrowRight size={14} aria-hidden="true" />
+        </Link>
+      </div>
+    );
+  }
   const invalid = status === "invalid";
   return (
     <div className="iv-composer__notice" role="status">
@@ -330,12 +345,14 @@ export default function CreateInfographic() {
       setItem(result.infographic);
       setParams({ id: result.infographic.id });
       reloadFeed();
+      // Credits may have been spent.
+      keyStatus.reload();
       stageRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       if (result.deduplicated)
         toast.info("This request is already being generated.");
     } catch (err) {
       setSubmitError(err);
-      if (err?.code === "NO_API_KEY" || err?.code === "API_KEY_INVALID")
+      if (["NO_API_KEY", "API_KEY_INVALID", "NO_CREDITS"].includes(err?.code))
         keyStatus.reload();
       if (err?.details?.topic) setTopicError(err.details.topic);
     } finally {
@@ -753,7 +770,7 @@ export default function CreateInfographic() {
         >
           <div className={`iv-composer__box ${topicError ? "is-invalid" : ""}`}>
             {!keyStatus.loading && !isPreview && (
-              <KeyCallout status={keyStatus.status} />
+              <KeyCallout keyStatus={keyStatus} />
             )}
             {submitError && (
               <div
@@ -812,6 +829,14 @@ export default function CreateInfographic() {
                 </span>
               </div>
               <div className="iv-composer__go">
+                {keyStatus.nextSource === "credits" && (
+                  <span
+                    className="iv-composer__cost"
+                    title={`${keyStatus.credits.credits} credits left`}
+                  >
+                    {keyStatus.credits.creditsPerInfographic} credits
+                  </span>
+                )}
                 <span
                   className={`iv-composer__count ${tooLong ? "is-over" : ""}`}
                 >

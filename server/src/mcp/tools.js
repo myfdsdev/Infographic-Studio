@@ -8,22 +8,22 @@ import { z } from 'zod';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { McpConnection } from '../models/McpConnection.js';
-import { ApiCredential } from '../models/ApiCredential.js';
 import * as infographicService from '../services/infographic.service.js';
 import { loadActiveUser } from '../services/auth.service.js';
 import { assertGenerationAllowed } from '../services/platformSettings.service.js';
 import { recordAudit } from '../services/audit.service.js';
+import { generationAccess } from '../services/credit.service.js';
 import { INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS, INFOGRAPHIC_LAYOUTS } from '../models/Infographic.js';
 import { TOPIC_MIN, TOPIC_MAX, STYLES, LAYOUTS } from '../services/infographicPrompt.js';
-
-// "id (summary)" lists for the tool schema, built from the prompt definitions.
-const optionList = (defs) => Object.values(defs).map((d) => `${d.id} (${d.summary.replace(/\.$/, '').toLowerCase()})`).join(', ');
 import { AppError } from '../utils/errors.js';
 import { toolByName } from './toolCatalog.js';
 
+// "id (summary)" lists for the tool schema, built from the prompt definitions.
+const optionList = (defs) => Object.values(defs).map((d) => `${d.id} (${d.summary.replace(/\.$/, '').toLowerCase()})`).join(', ');
+
 const objectId = (what) => z.string().regex(/^[a-f0-9]{24}$/i, `${what} must be a 24-character AI Infographic Studio id`);
 const PAID_NOTE =
-  'Paid: this starts generation on the user\'s own Kie.ai account and uses their Kie.ai credits (Kie.ai sets the price; AI Infographic Studio adds no charge). Only call it after the user has agreed.';
+  'Paid: this uses the user\'s AI Infographic Studio credits while they have enough, otherwise it runs on their own Kie.ai account and uses their Kie.ai credits. Only call it after the user has agreed.';
 
 function webUrl(path) {
   return new URL(path, env.CLIENT_URL).toString();
@@ -203,16 +203,22 @@ function statusDetails(item) {
   };
 }
 
-async function requireProviderKey(user) {
+/** Credits or a usable own key; otherwise refuse before anything is created. */
+async function requireGenerationAccess(user) {
   // Paused by the administrator: refuse before anything is created.
   await assertGenerationAllowed();
-  const credential = await ApiCredential.findOne({ userId: user._id, provider: 'kie' }).select('status').lean();
-  if (!credential) {
-    throw new ToolError('Connect your own Kie.ai API key in AI Infographic Studio (API Settings) before generating. Nothing was started.', 'NO_API_KEY');
-  }
-  if (credential.status === 'invalid') {
+  const access = await generationAccess(user);
+  if (access.nextSource) return;
+  if (access.ownKey === 'invalid') {
     throw new ToolError('Kie.ai rejected the saved API key. Replace it in AI Infographic Studio (API Settings). Nothing was started.', 'API_KEY_INVALID');
   }
+  if (access.platformAvailable) {
+    throw new ToolError(
+      `Not enough AI Infographic Studio credits (${access.credits} left, ${access.creditsPerInfographic} needed). Add your own Kie.ai API key in API Settings to keep generating. Nothing was started.`,
+      'NO_CREDITS',
+    );
+  }
+  throw new ToolError('Connect your own Kie.ai API key in AI Infographic Studio (API Settings) before generating. Nothing was started.', 'NO_API_KEY');
 }
 
 // ---------------------------------------------------------------- registration
@@ -245,7 +251,7 @@ export function registerTools(server, auth, requestMeta) {
       scopeChallenge: challengeFor('generate_infographic', auth),
       title: 'Generate an infographic',
       description: [
-        'Create a professional infographic image from a topic with Z-Image on Kie.ai, using the signed-in user\'s own Kie.ai API key.',
+        'Create a professional infographic image from a topic with Z-Image on Kie.ai, paid with the signed-in user\'s credits or, when those run out, their own Kie.ai API key.',
         'Returns an infographic_id immediately; generation runs in the background (usually under two minutes). Poll get_generation_status.',
         PAID_NOTE,
       ].join(' '),
@@ -272,7 +278,7 @@ export function registerTools(server, auth, requestMeta) {
     },
     run('generate_infographic', async (user, args) => {
       requireScope(auth, 'infographics:write');
-      await requireProviderKey(user);
+      await requireGenerationAccess(user);
       const body = { topic: args.topic, layout: args.layout || 'auto', style: args.style, aspectRatio: args.aspect_ratio };
       // Without a key from the assistant, identical requests within about two
       // minutes map to the same generation, so a retried call does not pay twice.

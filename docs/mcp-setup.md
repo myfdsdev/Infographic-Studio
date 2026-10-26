@@ -2,7 +2,7 @@
 
 **Status (2026-10-17):** implemented and covered by automated protocol tests. These use the official MCP SDK client plus HTTP-level tests against the real server code, with a mock Kie.ai. **No real Claude, Claude Code or ChatGPT connection has been tested yet** (see "Testing" below).
 
-AI Infographic Studio runs its own remote MCP server and OAuth 2.1 authorization server inside the Express API. AI assistants can generate infographics and read the user's history through it. Every generation runs on the user's **own** Kie.ai key (strict BYOK).
+AI Infographic Studio runs its own remote MCP server and OAuth 2.1 authorization server inside the Express API. AI assistants can generate infographics and read the user's history through it. A generation is paid with the user's credits while they have enough, then with the user's **own** Kie.ai key.
 
 ## Endpoints
 
@@ -60,7 +60,7 @@ A tool call without its scope gets `HTTP 403` with `WWW-Authenticate: Bearer err
 
 ## Tools
 
-All tools call the same `infographic.service.js` as the dashboard, as the token's user. Ownership, validation, duplicate protection and strict BYOK are therefore identical. Inputs are strict: unknown fields are refused. Results are JSON (`structuredContent` plus a text copy).
+All tools call the same `infographic.service.js` as the dashboard, as the token's user. Ownership, validation, duplicate protection and billing (credits, then own key) are therefore identical. Inputs are strict: unknown fields are refused. Results are JSON (`structuredContent` plus a text copy).
 
 | Tool | Input | What it does |
 |---|---|---|
@@ -145,9 +145,9 @@ Arguments keep ids and choices, while free text (`topic`) is reduced to its leng
   - hashed token storage, sanitized audit, and the MCP Connection page data.
 - `tests/integration/mcpTools.test.js` covers:
   - exactly the four tools listed;
-  - `generate_infographic` on the user's own key, tracked with `get_generation_status`;
+  - `generate_infographic` on credits or the user's own key, tracked with `get_generation_status`;
   - the paid confirmation and input validation;
-  - strict BYOK (no key or a rejected key starts nothing);
+  - no credits and no usable key starts nothing (`NO_CREDITS`, `NO_API_KEY`, `API_KEY_INVALID`);
   - idempotent retries;
   - isolation between users;
   - read-only connections;

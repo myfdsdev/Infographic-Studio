@@ -182,11 +182,64 @@ function Connected({ credential, onReplace, onRemove, onTested }) {
   );
 }
 
+const CREDIT_REASONS = {
+  bonus_signup: 'Sign-up bonus',
+  generation: 'Infographic',
+  refund: 'Refund (generation failed)',
+  admin_adjustment: 'Adjusted by support',
+};
+
+/** Platform credits: spent first, then the user's own key takes over. */
+function CreditsCard({ credits }) {
+  if (!credits || (!credits.platformAvailable && !credits.credits)) return null;
+  const cost = credits.creditsPerInfographic;
+  return (
+    <section className="iv-card">
+      <div className="iv-card__body d-flex flex-column gap-3">
+        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+          <div>
+            <h2 className="h6 mb-2">Your credits</h2>
+            <div className="iv-credits">
+              <span className="iv-credits__value">{credits.credits}</span>
+              <span className="iv-credits__unit">
+                credits · {credits.platformAvailable ? `${credits.infographicsLeft} infographic${credits.infographicsLeft === 1 ? '' : 's'} left` : 'paused right now'}
+              </span>
+            </div>
+          </div>
+          <Badge tone={credits.nextSource === 'credits' ? 'ok' : 'neutral'}>
+            {credits.nextSource === 'credits' ? 'Paying with credits' : credits.nextSource === 'own_key' ? 'Paying with your key' : 'Nothing to pay with'}
+          </Badge>
+        </div>
+        <p className="iv-muted small mb-0">
+          Each infographic uses {cost} credits. Credits are used first; when they run out, generation continues on your own Kie.ai key below. A
+          generation that fails gives its credits back.
+        </p>
+        {credits.transactions?.length > 0 && (
+          <div>
+            {credits.transactions.slice(0, 6).map((entry) => (
+              <div key={entry.id} className="iv-credit-row">
+                <span>
+                  {CREDIT_REASONS[entry.reason] || entry.reason}
+                  <span className="iv-muted"> · {formatRelative(entry.createdAt)}</span>
+                </span>
+                <span className={`iv-credit-row__amount ${entry.amount > 0 ? 'is-plus' : ''}`}>
+                  {entry.amount > 0 ? '+' : ''}
+                  {entry.amount}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function ApiSettings() {
   const { appName } = useBranding();
   const { isPreview } = useAuth();
   const { toast } = useToast();
-  const { credential, loading, error, reload, setCredential } = useKeyStatus();
+  const { credential, credits, loading, error, reload, setCredential } = useKeyStatus();
   const [replacing, setReplacing] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -197,7 +250,7 @@ export default function ApiSettings() {
       await settingsApi.deleteCredential(PROVIDER.key);
       setCredential(null);
       setConfirmRemove(false);
-      toast.success('Key removed. Generation stays off until you connect a key again.');
+      toast.success('Key removed. Once your credits run out, generation stops until you connect a key again.');
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -238,10 +291,14 @@ export default function ApiSettings() {
 
   return (
     <div className="iv-container iv-container--medium">
-      <PageHeader title="API Settings" description={`${appName} works on your own provider key (BYOK). Every infographic you generate uses your Kie.ai account and credits.`} />
+      <PageHeader
+        title="API Settings"
+        description={`Your ${appName} credits pay for infographics first. When they run out, your own Kie.ai key (BYOK) takes over and uses your Kie.ai account.`}
+      />
 
       <div className="row g-4">
-        <div className="col-lg-8">
+        <div className="col-lg-8 d-flex flex-column gap-4">
+          <CreditsCard credits={credits} />
           <section className="iv-card">
             <div className="iv-integration-card__head">
               <span className="iv-integration-card__logo" aria-hidden="true">
@@ -297,7 +354,7 @@ export default function ApiSettings() {
               </li>
               <li>
                 <Lock aria-hidden="true" />
-                Used only for your own generations, in the web app and through MCP. There is no shared key.
+                Used only for your own generations once your credits run out, in the web app and through MCP.
               </li>
             </ul>
           </Card>
@@ -307,7 +364,7 @@ export default function ApiSettings() {
       <ConfirmDialog
         open={confirmRemove}
         title="Remove your Kie.ai key?"
-        message={`The encrypted key is erased from ${appName}. You cannot generate (here or through MCP) until you connect a key again. Generations already running keep going at Kie.ai.`}
+        message={`The encrypted key is erased from ${appName}. Once your credits run out you cannot generate (here or through MCP) until you connect a key again. Generations already running keep going at Kie.ai.`}
         confirmLabel="Remove key"
         danger
         loading={removing}

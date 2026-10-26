@@ -32,7 +32,7 @@ export default function AuthLayout({ title, subtitle, children, footer, wide = f
               <span>
                 <KeyRound size={16} />
               </span>
-              Runs on your own Kie.ai key, encrypted and never shared
+              Start with credits, then continue on your own encrypted Kie.ai key
             </li>
             <li>
               <span>

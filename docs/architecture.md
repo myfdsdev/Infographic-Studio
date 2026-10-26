@@ -20,7 +20,7 @@ Browser (React)                         AI client (Claude, ChatGPT, Claude Code,
 |                                  |                                         |
 |   services/infographic.service.js  <---- mcp/tools.js (same service)       |
 |                                  |                                         |
-|   services/job.service.js (strict BYOK)  jobs/* (queue, worker, recovery)  |
+|   services/job.service.js + credit.service.js  jobs/* (queue, worker)      |
 |   providers/kie/* (direct Kie.ai HTTP calls)                               |
 +----------------------------------------------------------------------------+
         |                      |                              |
@@ -44,7 +44,7 @@ Browser (React)                         AI client (Claude, ChatGPT, Claude Code,
 Rules:
 
 - The browser never talks to Kie.ai or to the storage bucket.
-- Strict BYOK. Every generation uses the requesting user's own key. There is no shared, platform or admin key.
+- Credits first, then BYOK. A credit-paid infographic runs on the platform key; otherwise the requesting user's own key is used. A job's `keySource` (`platform` or `user`) decides which key the worker decrypts, and no job ever uses another user's key.
 - Provider keys are encrypted at rest (AES-256-GCM, `ENCRYPTION_KEY`, bound to the user and provider). After saving, a key is never returned to any client, admins included.
 - Admin authorisation is enforced in the backend (`requireAdmin`), never by hiding UI.
 - The acting user always comes from the session or the OAuth grant, never from a request body.
@@ -126,7 +126,8 @@ pending_submit --write "submitting" first--> createTask --taskId--> polling --su
                                                                     '--deadline--> failed SUBMISSION_UNCERTAIN
 ```
 
-- **Strict BYOK.** `job.service.assertUsableKey` refuses before anything is queued: `400 NO_API_KEY` when the user has no key, and `400 API_KEY_INVALID` when Kie.ai rejected the saved key. At run time the worker decrypts the owner's key in memory. A key rejected by Kie.ai fails the job (`PROVIDER_KEY_REJECTED`) and marks the key `invalid`.
+- **Credits, then BYOK.** `credit.service.reserveForInfographic` decides before anything is queued: when a usable platform key exists and the user's balance covers the price, the credits are taken in one atomic `$inc` (`credits >= price` in the filter) and the job gets `keySource: 'platform'`. Otherwise the user's own key must be usable (`400 NO_CREDITS`, `NO_API_KEY` or `API_KEY_INVALID` when not). A reservation that does not become an infographic (duplicate or error) is returned at once; an infographic that finally fails or is cancelled is refunded once (`billing.refundedAt` is claimed atomically). A repeated Idempotency-Key returns the first infographic before credits are looked at. At run time the worker decrypts the job's key (`getJobKey`) in memory. A key rejected by Kie.ai fails the job (`PROVIDER_KEY_REJECTED`) and marks that key `invalid` (the platform key pauses credit-paid generation until an admin replaces it). Every credit change is written to `CreditTransaction`.
+- **Bonus links** (`BonusLink`, `bonusLink.service.js`). A sign-up with `bonusCode` (or Google sign-up started with `?bonus=`, carried in the sealed flow cookie) claims the link with one atomic update that checks `enabled`, `expiresAt` and `uses < maxUses`, then grants the credits. An unusable code never blocks the sign-up.
 - **Provider adapter.** `providers/kie/` holds the HTTP client, the image model table (`capabilities.js`: Nano Banana 2, Nano Banana Edit, Grok Imagine Image 2.0 and its Edit variant, Z-Image) and status normalisation. Only Z-Image is used by the product. The others are image models kept in the catalogue, and admins can turn any of them off.
 - **Claiming.** `jobs/queue.js` claims one due job atomically with a lease (`lockedBy` / `lockedUntil`). Only the lease holder can release it.
 - **No duplicate charges.** Before `createTask`, the job is written as phase `submitting`. Any answer that does not prove the task was *not* created moves the job to `reconcile`, never back to sending. A retry of such a job needs explicit confirmation.

@@ -28,6 +28,9 @@ export const signupBody = z.strictObject({
   name: nameSchema,
   email: emailSchema,
   password: passwordSchema,
+  // Optional bonus sign-up link code (?bonus=...). An unusable code never
+  // blocks the sign-up; it just gives no credits.
+  bonusCode: z.string().trim().max(64).optional(),
 });
 
 export const loginBody = z.strictObject({

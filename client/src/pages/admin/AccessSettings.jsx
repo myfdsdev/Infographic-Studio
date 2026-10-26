@@ -18,10 +18,11 @@ function toForm(settings) {
     ...settings.access,
     userConcurrency: String(settings.limits.userConcurrency),
     workerConcurrency: String(settings.limits.workerConcurrency),
+    perInfographic: String(settings.credits?.perInfographic ?? 10),
   };
 }
 
-/** App access (sign-ups, maintenance, generation, AI apps) and concurrency. Applied by the server on every request and job. */
+/** App access (sign-ups, maintenance, generation, AI apps), credit price and concurrency. Applied by the server on every request and job. */
 export default function AccessSettings() {
   const { toast } = useToast();
   const resource = useApiResource((signal) => adminApi.getSettings({ signal }));
@@ -43,6 +44,8 @@ export default function AccessSettings() {
     const workerConcurrency = Number(form.workerConcurrency);
     if (!Number.isInteger(userConcurrency) || userConcurrency < 1 || userConcurrency > 20) next.userConcurrency = 'Use a whole number from 1 to 20';
     if (!Number.isInteger(workerConcurrency) || workerConcurrency < 1 || workerConcurrency > 50) next.workerConcurrency = 'Use a whole number from 1 to 50';
+    const perInfographic = Number(form.perInfographic);
+    if (!Number.isInteger(perInfographic) || perInfographic < 1 || perInfographic > 10000) next.perInfographic = 'Use a whole number from 1 to 10000';
     setErrors(next);
     if (Object.keys(next).length) return;
     setSaving(true);
@@ -57,6 +60,7 @@ export default function AccessSettings() {
           mcpEnabled: form.mcpEnabled,
         },
         limits: { userConcurrency, workerConcurrency },
+        credits: { perInfographic },
       });
       resource.setData({ settings: result.settings });
       toast.success('Access and limits saved. They apply within a few seconds.');
@@ -109,6 +113,24 @@ export default function AccessSettings() {
                 ? 'When off, connected AI apps get "temporarily unavailable" and no new connection can be approved. Existing connections are kept.'
                 : 'The MCP server is turned off on this server (MCP_ENABLED=false).'
             }
+          />
+        </div>
+      </Card>
+
+      <Card
+        title={<span className="iv-gradient-text">Credits</span>}
+        subtitle="What one infographic costs when it is paid with credits (on the platform Kie.ai key). Users without enough credits use their own key."
+      >
+        <div className="iv-form-grid iv-form-grid--2">
+          <Input
+            label="Credits per infographic"
+            type="number"
+            min={1}
+            max={10000}
+            value={form.perInfographic}
+            onChange={set('perInfographic')}
+            error={errors.perInfographic}
+            hint="Changes apply to new generations only."
           />
         </div>
       </Card>

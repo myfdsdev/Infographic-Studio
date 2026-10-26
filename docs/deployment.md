@@ -60,7 +60,7 @@ Put nginx or Caddy in front of both. Route `/api/*`, `/mcp`, `/oauth/*` and `/.w
 | `UPLOAD_MAX_MB`, `ASSET_DOWNLOAD_MAX_MB` | Defaults 10 (branding uploads) and 30 (largest generated image accepted). |
 | `LOG_LEVEL` | `info` |
 
-There is **no** platform Kie.ai key variable, by design. Each user brings their own key (strict BYOK).
+There is no platform Kie.ai key **variable**: an administrator saves the platform key in the app (Admin > Provider), where it is encrypted with `ENCRYPTION_KEY`. Without it, every user generates on their own key.
 
 Validate before the first start:
 

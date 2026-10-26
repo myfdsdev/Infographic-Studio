@@ -1,7 +1,7 @@
 // Platform controls an administrator can change at runtime: who may use the
 // app (sign-ups, maintenance), whether new generation and AI-app access are
-// allowed, worker and per-user concurrency, and which provider models are
-// offered. Stored in AppSettings ("platform"), cached briefly in memory so the
+// allowed, worker and per-user concurrency, what an infographic costs in
+// platform credits, and which provider models are offered. Stored in AppSettings ("platform"), cached briefly in memory so the
 // hot paths (every request, every job) do not hit the database each time.
 // Environment variables give the defaults until an administrator saves.
 import { z } from 'zod';
@@ -30,7 +30,14 @@ export const platformSettingsBody = z.strictObject({
       workerConcurrency: z.number().int().min(1).max(50).optional(),
     })
     .optional(),
+  credits: z
+    .strictObject({
+      perInfographic: z.number().int().min(1).max(10000).optional(),
+    })
+    .optional(),
 });
+
+export const DEFAULT_CREDITS_PER_INFOGRAPHIC = 10;
 
 export function defaultPlatformSettings() {
   return {
@@ -46,6 +53,7 @@ export function defaultPlatformSettings() {
       userConcurrency: env.JOB_USER_CONCURRENCY,
       workerConcurrency: env.WORKER_CONCURRENCY,
     },
+    credits: { perInfographic: DEFAULT_CREDITS_PER_INFOGRAPHIC },
     models: { disabled: [] },
   };
 }
@@ -55,6 +63,7 @@ function merge(stored) {
   return {
     access: { ...defaults.access, ...(stored?.access || {}) },
     limits: { ...defaults.limits, ...(stored?.limits || {}) },
+    credits: { ...defaults.credits, ...(stored?.credits || {}) },
     models: { disabled: Array.isArray(stored?.models?.disabled) ? [...stored.models.disabled] : [] },
     updatedAt: stored?.updatedAt || null,
     updatedBy: stored?.updatedBy || null,
@@ -91,6 +100,7 @@ async function save(next, actor, req, { action, summary, metadata }) {
   const value = {
     access: next.access,
     limits: next.limits,
+    credits: next.credits,
     models: next.models,
     updatedAt: new Date(),
     updatedBy: actor?.email || null,
@@ -103,7 +113,7 @@ async function save(next, actor, req, { action, summary, metadata }) {
 
 function diff(before, after) {
   const changes = {};
-  for (const section of ['access', 'limits']) {
+  for (const section of ['access', 'limits', 'credits']) {
     for (const [key, value] of Object.entries(after[section])) {
       if (before[section][key] !== value) changes[`${section}.${key}`] = { from: before[section][key], to: value };
     }
@@ -116,6 +126,7 @@ export async function updatePlatformSettings(actor, body, req) {
   const next = {
     access: { ...current.access, ...(body.access || {}) },
     limits: { ...current.limits, ...(body.limits || {}) },
+    credits: { ...current.credits, ...(body.credits || {}) },
     models: current.models,
   };
   const changes = diff(current, next);

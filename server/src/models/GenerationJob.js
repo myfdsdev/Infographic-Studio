@@ -36,6 +36,9 @@ const generationJobSchema = new mongoose.Schema(
     // Feature-specific details of the subject (e.g. the infographic style and
     // shape). Never contains credentials.
     subjectMeta: { type: mongoose.Schema.Types.Mixed, default: null },
+    // Whose provider key runs this job: the platform's (paid with credits) or
+    // the user's own. Jobs made before platform credits existed are 'user'.
+    keySource: { type: String, enum: ['user', 'platform'], default: 'user' },
     // Stored images the request refers to as "asset://<id>" placeholders.
     // They are uploaded to the provider right before submission.
     assetIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },

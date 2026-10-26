@@ -368,7 +368,7 @@ export async function providerOverview() {
         apiHost: hostOf(env.KIE_API_BASE_URL),
         uploadHost: hostOf(env.KIE_UPLOAD_BASE_URL),
         keys: { saved: keys, invalid },
-        note: 'Each user generates with their own Kie.ai key. Keys are encrypted and never shown to administrators.',
+        note: 'Users generate with credits on the platform key above, then with their own Kie.ai key. User keys are encrypted and never shown to administrators.',
         models: KIE_MODELS.map((model) => ({
           id: model.id,
           label: model.label,

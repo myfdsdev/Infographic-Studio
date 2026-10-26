@@ -27,6 +27,13 @@ const infographicSchema = new mongoose.Schema(
     prompt: { type: String, required: true, maxlength: 20000 },
     source: { type: String, enum: INFOGRAPHIC_SOURCES, default: 'web' },
     regeneratedFrom: { type: mongoose.Schema.Types.ObjectId, ref: 'Infographic', default: null },
+    // How it was paid: platform credits (refunded once if it fails) or the
+    // user's own key.
+    billing: {
+      source: { type: String, enum: ['user', 'platform'], default: 'user' },
+      credits: { type: Number, default: 0 },
+      refundedAt: { type: Date, default: null },
+    },
 
     jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'GenerationJob', required: true },
     status: { type: String, enum: INFOGRAPHIC_STATUSES, default: 'queued' },

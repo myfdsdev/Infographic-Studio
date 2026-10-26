@@ -9,6 +9,7 @@ import ErrorState from '../../components/common/ErrorState.jsx';
 import EmptyState from '../../components/common/EmptyState.jsx';
 import Loader from '../../components/common/Loader.jsx';
 import UserActionDialog from '../../components/admin/UserActionDialog.jsx';
+import UserCreditsCard from '../../components/admin/UserCreditsCard.jsx';
 import ConfirmDialog from '../../components/common/ConfirmDialog.jsx';
 import { useApiResource } from '../../hooks/useApiResource.js';
 import { useToast } from '../../hooks/useToast.js';
@@ -182,8 +183,18 @@ export default function UserDetails() {
                 <dt>User id</dt>
                 <dd className="iv-mono">{user.id}</dd>
               </div>
+              {user.bonusLinkId && (
+                <div className="iv-kv__row">
+                  <dt>Signed up via</dt>
+                  <dd>
+                    <Link to={ROUTES.adminBonusLinks}>Bonus link</Link>
+                  </dd>
+                </div>
+              )}
             </dl>
           </Card>
+
+          <UserCreditsCard userId={user.id} credits={user.credits} />
 
           <Card title="API keys" subtitle="Provider and status only. Keys and their digits are never shown to administrators.">
             {credentials.length === 0 ? (

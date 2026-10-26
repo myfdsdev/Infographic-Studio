@@ -14,7 +14,7 @@ import { escapeRegex, isObjectId } from '../utils/sanitize.js';
 import { hashToken, looksLikeToken } from '../utils/tokens.js';
 import { ACTIVE_STATUSES, TERMINAL_STATUSES, jobEvent, pushEvent } from '../jobs/queue.js';
 import { timeoutMsFor, callbackPath } from '../jobs/handlers/providerTask.js';
-import { getDecryptedKey } from './credential.service.js';
+import { getJobKey, chargeRetry } from './credit.service.js';
 import { recordAudit } from './audit.service.js';
 
 const DUPLICATE_WINDOW_MS = 2 * 60 * 1000;
@@ -91,8 +91,9 @@ export function toJobDto(job, { admin = false, userEmail } = {}) {
 }
 
 /**
- * Strict BYOK: the user's own key must exist and must not have been rejected
- * by the provider. Nothing falls back to another key.
+ * For jobs on the user's own key: it must exist and must not have been
+ * rejected by the provider. (Credit-paid infographics run on the platform key
+ * instead; see credit.service.js.)
  */
 export async function assertUsableKey(userId, provider) {
   const credential = await ApiCredential.findOne({ userId, provider: provider.key }).select('status').lean();
@@ -115,14 +116,26 @@ function hashInput(payload) {
 }
 
 /**
- * Queue a generation job for `user`, on the user's OWN provider key (there is
- * no shared or admin key). Duplicate protection:
+ * Queue a generation job for `user`. It runs on the user's OWN provider key,
+ * unless `keySource` is 'platform' (an infographic already paid with platform
+ * credits). Duplicate protection:
  *   - same Idempotency-Key from the same user -> the existing job is returned
  *   - identical request still queued/running from the last 2 minutes -> returned
  */
 export async function createJob(
   user,
-  { kind, provider: providerKey = 'kie', model, params, idempotencyKey, subjectType, subjectId, subjectMeta, assetIds = [] },
+  {
+    kind,
+    provider: providerKey = 'kie',
+    model,
+    params,
+    idempotencyKey,
+    subjectType,
+    subjectId,
+    subjectMeta,
+    assetIds = [],
+    keySource = 'user',
+  },
   { internal = false } = {},
 ) {
   const provider = getProvider(providerKey);
@@ -142,7 +155,7 @@ export async function createJob(
     throw error;
   }
 
-  await assertUsableKey(user._id, provider);
+  if (keySource !== 'platform') await assertUsableKey(user._id, provider);
 
   if (idempotencyKey) {
     const existing = await GenerationJob.findOne({ userId: user._id, idempotencyKey });
@@ -169,6 +182,7 @@ export async function createJob(
       subjectType: subjectType || null,
       subjectId: subjectId || null,
       subjectMeta: subjectMeta || null,
+      keySource: keySource === 'platform' ? 'platform' : 'user',
       assetIds: [...new Set(usedAssetIds)],
       status: 'queued',
       phase: 'pending_submit',
@@ -269,7 +283,12 @@ export async function retryJob(actor, id, { confirmDuplicateRisk = false, admin 
     );
   }
   await assertGenerationAllowed();
-  await assertUsableKey(job.userId, getProvider(job.provider));
+  const keySource = job.keySource === 'platform' ? 'platform' : 'user';
+  if (keySource === 'platform') {
+    await chargeRetry(Infographic, job.subjectType === 'infographic' ? job.subjectId : null);
+  } else {
+    await assertUsableKey(job.userId, getProvider(job.provider));
+  }
   const now = Date.now();
   const retry = await GenerationJob.create({
     userId: job.userId,
@@ -280,6 +299,7 @@ export async function retryJob(actor, id, { confirmDuplicateRisk = false, admin 
     subjectType: job.subjectType,
     subjectId: job.subjectId,
     subjectMeta: job.subjectMeta || null,
+    keySource,
     assetIds: job.assetIds || [],
     status: 'queued',
     phase: 'pending_submit',
@@ -386,7 +406,7 @@ export async function handleProviderCallback(providerKey, jobId, token, payload)
 
   let task;
   try {
-    const stored = await getDecryptedKey(job.userId, job.provider);
+    const stored = await getJobKey(job);
     if (!stored) return { accepted: false };
     task = await provider.fetchTask(stored.apiKey, taskId);
   } catch (error) {

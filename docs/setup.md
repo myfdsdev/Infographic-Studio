@@ -36,7 +36,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Provider and worker settings (`KIE_API_BASE_URL`, `WORKER_*`, `JOB_*`) have working defaults; see the comments in `server/.env.example`. Leave `PUBLIC_WEBHOOK_BASE_URL` empty locally.
 
-There is no platform Kie.ai key to configure. Each user saves their own key in the app (strict BYOK).
+No Kie.ai key goes in `server/.env`. To let users generate with credits, an administrator saves the platform key in Admin > Provider; users can always save their own key in API Settings.
 
 Validate the result:
 

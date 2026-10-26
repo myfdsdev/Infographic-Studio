@@ -59,19 +59,20 @@ Common error codes:
 
 | Method and path | Access | Body | Result |
 |---|---|---|---|
-| `POST /signup` | public | `{ name, email, password }` | `201 { user }`, session cookie set. New accounts are always role `user`. `409` if the email exists, `403 SIGNUP_DISABLED` when sign-ups are closed. |
+| `POST /signup` | public | `{ name, email, password, bonusCode? }` | `201 { user, bonus }`, session cookie set. `bonus` is `{ credits }` when a usable bonus link code was given, otherwise `null` (an unusable code never blocks the sign-up). New accounts are always role `user`. `409` if the email exists, `403 SIGNUP_DISABLED` when sign-ups are closed. |
 | `POST /login` | public | `{ email, password, remember? }` | `{ user }`, session cookie set. A wrong email and a wrong password give the same `401`. Suspended accounts get `403 ACCOUNT_SUSPENDED`. |
 | `POST /logout` | signed in | none | `{ ok: true }`, session revoked and cookie cleared. |
 | `GET /me` | signed in | none | `{ user, actingAs }`. `actingAs` is `null`, or describes the administrator while "Act as user" is active. |
 | `POST /act-as/stop` | signed in | none | Ends "Act as user": `{ user, actingAs: null, viewedUserId }`. `409 NOT_ACTING_AS` when no view is active. |
 | `GET /options` | public | none | `{ google, signupEnabled }`. |
-| `GET /google/start?returnTo=` | browser navigation | none | Starts Sign in with Google (PKCE, signed flow cookie `iv_google`). `returnTo` must be a path inside the app. |
+| `GET /bonus/:code` | public | none | `{ valid: true, credits }` or `{ valid: false, reason }` (`not_found`, `disabled`, `expired`, `used_up`). |
+| `GET /google/start?returnTo=&bonus=` | browser navigation | none | Starts Sign in with Google (PKCE, signed flow cookie `iv_google`). `returnTo` must be a path inside the app. `bonus` is claimed only if Google creates a new account. |
 | `GET /google/connect` | signed in, browser navigation | none | Connects Google to the signed-in account. |
 | `GET /google/callback` | from Google | `code`, `state` | Verifies the flow and the ID token, then signs in, creates a password-less user (only while sign-ups are open), or links the account. Failures redirect with `?google=` (`cancelled`, `expired`, `failed`, `unverified_email`, `email_in_use`, `signup_disabled`, `suspended`, `maintenance`, `already_linked`, `not_signed_in`). An existing account with the same email is never taken over. |
 | `POST /forgot-password` | public | `{ email }` | Always the same `{ ok, message }`. Sends a single-use link valid for `PASSWORD_RESET_TTL_MINUTES`. |
 | `POST /reset-password` | public | `{ token, password }` | `{ ok, message }`. Revokes every session and every AI-app connection of the account. |
 
-Passwords need 8 to 128 characters with at least one letter and one number. `user` objects contain `id, email, name, role, status, createdAt, lastLoginAt`, never hashes or tokens.
+Passwords need 8 to 128 characters with at least one letter and one number. `user` objects contain `id, email, name, role, status, createdAt, lastLoginAt, credits`, never hashes or tokens.
 
 ## Account (`/api/settings`, signed in)
 
@@ -88,7 +89,7 @@ Passwords need 8 to 128 characters with at least one letter and one number. `use
 
 ## Provider keys (`/api/settings`, signed in)
 
-Keys are encrypted with AES-256-GCM (`ENCRYPTION_KEY`, bound to the user and provider) and never returned. Responses carry only the last four characters. There is no shared or admin key: each user generates with their own key.
+Keys are encrypted with AES-256-GCM (`ENCRYPTION_KEY`, bound to the user and provider) and never returned. Responses carry only the last four characters. A user's own key pays for infographics once their platform credits run out (see below).
 
 | Method and path | Body | Result |
 |---|---|---|
@@ -99,6 +100,10 @@ Keys are encrypted with AES-256-GCM (`ENCRYPTION_KEY`, bound to the user and pro
 | `DELETE /credentials/:provider` | none | `{ ok }`, or `404` when no key is stored. |
 
 `credential` has the shape `{ provider, last4, status: valid | unverified | invalid, lastVerifiedAt, lastCheckError, balance, balanceCheckedAt, createdAt, updatedAt }`. Supported provider: `kie` (Kie.ai).
+
+## Credits (`/api/settings/credits`, signed in)
+
+`GET /api/settings/credits` returns `{ credits, creditsPerInfographic, infographicsLeft, platformAvailable, ownKey, nextSource, transactions }`. `nextSource` is what the next infographic is paid with: `credits` (platform credits, on the platform key), `own_key`, or `null` when neither is available. `ownKey` is `none`, `unverified`, `valid` or `invalid`. `transactions` are the 20 newest `{ id, amount, balanceAfter, reason, note, infographicId, createdAt }`, with `reason` one of `bonus_signup`, `generation`, `refund`, `admin_adjustment`.
 
 ## Infographics (`/api/infographics`, signed in)
 
@@ -134,7 +139,8 @@ Every generation runs `z-image` (PNG output; prompt capped at 1000 characters, s
 
 | Code | Meaning |
 |---|---|
-| `400 NO_API_KEY` | The caller has not saved a Kie.ai key. |
+| `400 NO_CREDITS` | Not enough platform credits (`details: { required, balance }`) and no own key saved. |
+| `400 NO_API_KEY` | No platform key is configured and the caller has not saved a Kie.ai key. |
 | `400 API_KEY_INVALID` | Kie.ai rejected the saved key. Replace it in API Settings. |
 | `400 VALIDATION_ERROR` | Short topic, unknown layout or style, or unsupported ratio. |
 | `503 GENERATION_PAUSED`, `400 MODEL_DISABLED` | Admin switches. |
@@ -261,7 +267,10 @@ Every route requires an active administrator. Non-admins get `403`, and signed-o
 | `GET /system` | `{ system }`: database (connected, name), worker (due jobs, oldest wait, concurrency, active infographics), storage driver, email, MCP (enabled, URL), access switches, process uptime and memory. |
 | `GET /failures?days=1..30` | Failed jobs grouped by error code (count, latest, models, redacted example) plus recent failed jobs with user email. |
 | `GET /ops-logs?level=&search=&page=&limit=` | Server warnings and errors of the last 14 days (redacted). |
-| `GET /settings`, `PATCH /settings` | Body `{ access?: { signupEnabled, maintenanceMode, maintenanceMessage, generationEnabled, generationPausedMessage, mcpEnabled }, limits?: { userConcurrency 1-20, workerConcurrency 1-50 } }`. |
+| `GET /settings`, `PATCH /settings` | Body `{ access?: { signupEnabled, maintenanceMode, maintenanceMessage, generationEnabled, generationPausedMessage, mcpEnabled }, limits?: { userConcurrency 1-20, workerConcurrency 1-50 }, credits?: { perInfographic 1-10000 } }`. |
+| `GET /platform-key`, `PUT /platform-key`, `POST /platform-key/test`, `DELETE /platform-key` | The platform Kie.ai key that runs credit-paid infographics. `PUT` body `{ apiKey }` (checked, then encrypted; `400 KEY_REJECTED`). Responses `{ key: { configured, last4, status, balance, lastVerifiedAt, lastCheckError, updatedAt, updatedBy } }`, never the key. |
+| `GET /bonus-links`, `POST /bonus-links` | `POST` body `{ name, credits, maxUses?, expiresAt? }` gives `201 { link }`. A link is `{ id, code, name, credits, maxUses, expiresAt, enabled, uses, creditsGranted, lastUsedAt, state, url }`; `state` is `active`, `disabled`, `expired` or `used_up`. |
+| `GET /bonus-links/:id`, `PATCH /bonus-links/:id` | `GET` gives `{ link, signups }` (the accounts created through it). `PATCH` body `{ name?, enabled?, maxUses?, expiresAt? }`. |
 | `GET /providers` | Kie.ai hosts, key counts (saved, invalid), and every image model with `usedFor` (Z-Image: "Infographic generation"), `enabled` and failures in 24 h. |
 | `PUT /providers/kie/models` | Body `{ model, enabled }`. A turned-off model is refused with `400 MODEL_DISABLED`. Turning off `z-image` stops infographic generation. |
 | `GET /infographics?search=&status=&page=&limit=` | Every user's infographics, newest first: `{ items: [{ id, userId, userEmail, title, style, aspectRatio, source, status, error (redacted), jobId, createdAt, completedAt }], total, page, limit }`. `search` matches an infographic, user or job id, a user email or the title. Prompts are never included. |
@@ -273,6 +282,7 @@ Every route requires an active administrator. Non-admins get `403`, and signed-o
 | `DELETE /branding/logo`, `DELETE /branding/favicon`, `POST /branding/reset` | Back to the defaults. |
 | `GET /users?search=&status=&role=&page=&limit=` | `{ items, total, page, limit }` |
 | `GET /users/:id` | `{ user, activeSessions, recentActivity, credentials, mcpConnections, usage }`. `credentials` holds `{ provider, status, lastVerifiedAt, updatedAt }` only, never a key or its last digits. `usage` holds `{ infographics, infographicsCompleted, infographicsFailed, jobs, failedJobs }`. |
+| `GET /users/:id/credits`, `POST /users/:id/credits` | The account's credit history, and `POST` body `{ amount (non-zero, -100000..100000), note? }` to add or remove credits: `{ credits }`. `400 NOT_ENOUGH_CREDITS` if removing would go below zero. |
 | `PATCH /users/:id` | Body `{ role?, status?, reason? }`. Suspending revokes every session and blocks AI-app tokens at once. Changes to your own account are refused, and so is removing the last active admin. |
 | `POST /users/:id/act-as` | "Act as user": this browser session sees the app as that user, read-only, for up to 60 minutes. Writes are refused with `403 ACT_AS_READ_ONLY`, except `POST /api/auth/act-as/stop` and `POST /api/auth/logout`. Refused for yourself (`400 ACT_AS_SELF`), administrators (`403 ACT_AS_ADMIN`) and suspended accounts (`409 ACT_AS_SUSPENDED`). |
 | `GET /audit-logs?search=&area=&outcome=&page=&limit=` | Areas `auth`, `account`, `admin`, `mcp`, `system`. |

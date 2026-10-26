@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as controller from '../controllers/settings.controller.js';
+import * as creditsController from '../controllers/credits.controller.js';
 import { validate } from '../middleware/validate.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { requireDatabase } from '../middleware/requireDatabase.js';
@@ -34,6 +35,8 @@ export function createSettingsRouter({ env }) {
   router.put('/credentials/:provider', sensitiveLimiter, validate({ params: providerParam, body: saveCredentialBody }), controller.saveCredential);
   router.post('/credentials/:provider/verify', sensitiveLimiter, validate({ params: providerParam }), controller.verifyCredential);
   router.delete('/credentials/:provider', validate({ params: providerParam }), controller.deleteCredential);
+
+  router.get('/credits', creditsController.myCredits);
 
   return router;
 }

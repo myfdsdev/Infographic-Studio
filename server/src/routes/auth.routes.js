@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as controller from '../controllers/auth.controller.js';
+import * as creditsController from '../controllers/credits.controller.js';
 import { validate } from '../middleware/validate.js';
 import { authenticate, optionalAuthenticate } from '../middleware/authenticate.js';
 import { requireDatabase } from '../middleware/requireDatabase.js';
@@ -27,6 +28,8 @@ export function createAuthRouter({ env }) {
   // not turn it into a JSON error page, so session problems are ignored here.
   const sessionIfAny = (req, res, next) => optionalAuthenticate(req, res, () => next());
   router.get('/options', controller.options);
+  // What a bonus sign-up link gives (the sign-up page shows it).
+  router.get('/bonus/:code', ipLimiter, creditsController.describeBonus);
   router.get('/google/start', googleLimiter, controller.googleStart);
   router.get('/google/connect', googleLimiter, authenticate, controller.googleConnectStart);
   router.get('/google/callback', googleLimiter, sessionIfAny, controller.googleCallback);

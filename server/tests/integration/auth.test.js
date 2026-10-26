@@ -35,7 +35,7 @@ test('sign-up sets an httpOnly SameSite session cookie and returns only public f
   assert.match(cookie, /HttpOnly/i);
   assert.match(cookie, /SameSite=Lax/i);
   assert.match(cookie, /Path=\//);
-  assert.deepEqual(Object.keys(res.body.user).sort(), ['createdAt', 'email', 'id', 'lastLoginAt', 'name', 'role', 'status']);
+  assert.deepEqual(Object.keys(res.body.user).sort(), ['createdAt', 'credits', 'email', 'id', 'lastLoginAt', 'name', 'role', 'status']);
   assert.equal(res.body.user.email, email);
   assert.ok(!JSON.stringify(res.body).includes('passwordHash'));
 });

@@ -10,6 +10,7 @@ import { useApiResource } from '../../hooks/useApiResource.js';
 import { useToast } from '../../hooks/useToast.js';
 import { adminApi } from '../../services/adminApi.js';
 import { errorMessage } from '../../services/api.js';
+import PlatformKeyCard from '../../components/admin/PlatformKeyCard.jsx';
 
 const KIND_LABEL = { image: 'Image', video: 'Video', audio: 'Voice' };
 
@@ -39,6 +40,7 @@ export default function Providers() {
 
   return (
     <div className="d-flex flex-column gap-4">
+      <PlatformKeyCard />
       {resource.data.providers.map((provider) => (
         <Card
           key={provider.key}

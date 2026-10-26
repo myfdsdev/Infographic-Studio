@@ -3104,6 +3104,16 @@ img {
   font-variant-numeric: tabular-nums;
 }
 
+.iv-composer__cost {
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .iv-composer__count.is-over {
   color: var(--danger);
   font-weight: 600;
@@ -5213,4 +5223,86 @@ img {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Bonus sign-up link banner */
+.iv-bonus-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--s-3);
+  padding: 12px 14px;
+  border: 1px solid #c6e9a6;
+  border-radius: var(--radius);
+  background: #f3fbe9;
+  color: #2f5a12;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.iv-bonus-banner svg {
+  flex-shrink: 0;
+}
+
+.iv-bonus-banner--muted {
+  border-color: var(--border);
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+/* Credits overview (API Settings) */
+.iv-credits {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.iv-credits__value {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.iv-credits__unit {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.iv-credit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.iv-credit-row:last-child {
+  border-bottom: 0;
+}
+
+.iv-credit-row__amount {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.iv-credit-row__amount.is-plus {
+  color: var(--success, #1f8a4c);
+}
+
+.iv-bonus-url {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 340px;
+}
+
+.iv-bonus-url code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
 }

@@ -20,7 +20,7 @@ import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 import { Asset } from '../../models/Asset.js';
 import { getProvider, ProviderError, isAssetRef, ASSET_REF_PREFIX } from '../../providers/providerRegistry.js';
-import { getDecryptedKey, markCredentialInvalid } from '../../services/credential.service.js';
+import { getJobKey, markJobKeyInvalid } from '../../services/credit.service.js';
 import { providerUrlFor } from '../../services/asset.service.js';
 import { generateToken, hashToken } from '../../utils/tokens.js';
 import { releaseJob, jobEvent, pushEvent } from '../queue.js';
@@ -138,7 +138,7 @@ async function prepareRequest(job, workerId, provider, apiKey) {
     const storageDown = error?.code === 'STORAGE_UNAVAILABLE';
     if (error instanceof ProviderError || storageDown) {
       if (error.kind === 'auth') {
-        await markCredentialInvalid(job.userId, job.provider, error.message);
+        await markJobKeyInvalid(job, error.message);
         await finish(job, workerId, 'failed', { code: 'PROVIDER_KEY_REJECTED', message: error.message });
         return null;
       }
@@ -207,7 +207,7 @@ async function submit(job, workerId) {
 
   let stored;
   try {
-    stored = await getDecryptedKey(job.userId, job.provider);
+    stored = await getJobKey(job);
   } catch (error) {
     await finish(job, workerId, 'failed', { code: error.code || 'KEY_UNREADABLE', message: error.message });
     return;
@@ -215,7 +215,10 @@ async function submit(job, workerId) {
   if (!stored) {
     await finish(job, workerId, 'failed', {
       code: 'NO_API_KEY',
-      message: `No ${provider.name} API key is saved. Add one in API settings, then retry.`,
+      message:
+        job.keySource === 'platform'
+          ? `The platform ${provider.name} key was removed by an administrator, so this credit-paid task cannot run.`
+          : `No ${provider.name} API key is saved. Add one in API settings, then retry.`,
     });
     return;
   }
@@ -257,7 +260,7 @@ async function submit(job, workerId) {
       await toReconcile(claimed, workerId, `${error.message}. The provider may have started the task, so it was not resent.`);
       return;
     }
-    if (error.kind === 'auth') await markCredentialInvalid(job.userId, job.provider, error.message);
+    if (error.kind === 'auth') await markJobKeyInvalid(job, error.message);
     const retryable = error.retryable && claimed.submitAttempts < claimed.maxSubmitAttempts;
     if (retryable) {
       const delay = retryDelay(claimed.submitAttempts);
@@ -326,7 +329,7 @@ async function poll(job, workerId) {
   const provider = getProvider(job.provider);
   let stored;
   try {
-    stored = await getDecryptedKey(job.userId, job.provider);
+    stored = await getJobKey(job);
   } catch (error) {
     await finish(job, workerId, 'failed', { code: error.code || 'KEY_UNREADABLE', message: error.message });
     return;
@@ -344,7 +347,7 @@ async function poll(job, workerId) {
     task = await provider.fetchTask(stored.apiKey, job.providerTaskId);
   } catch (error) {
     if (error instanceof ProviderError && error.kind === 'auth') {
-      await markCredentialInvalid(job.userId, job.provider, error.message);
+      await markJobKeyInvalid(job, error.message);
       await finish(job, workerId, 'failed', { code: 'PROVIDER_KEY_REJECTED', message: `${error.message} while checking the task` });
       return;
     }

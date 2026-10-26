@@ -8,6 +8,8 @@ export const settingsApi = {
     api.put(`/settings/credentials/${encodeURIComponent(provider)}`, { apiKey }),
   deleteCredential: (provider) => api.delete(`/settings/credentials/${encodeURIComponent(provider)}`),
   verifyCredential: (provider) => api.post(`/settings/credentials/${encodeURIComponent(provider)}/verify`),
+  /** Platform credits: balance, price, what pays next, recent history. */
+  getCredits: (options) => api.get('/settings/credits', options),
   updateAccount: (data) => api.patch('/settings/account', data),
   // currentPassword is left out when the account has no password yet.
   changePassword: ({ currentPassword, newPassword }) =>
