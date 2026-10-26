@@ -40,7 +40,7 @@ Common error codes:
 
   | Applies to | Limit |
   |---|---|
-  | Every `/api` route except health | `RATE_LIMIT_MAX` per `RATE_LIMIT_WINDOW_MS` per IP |
+  | Every `/api` route except health and image reads (infographic images, branding logo/favicon) | `RATE_LIMIT_MAX` per `RATE_LIMIT_WINDOW_MS` per IP (default 1000 per 15 minutes) |
   | Signup, login and reset requests | `AUTH_RATE_LIMIT_MAX` per IP, plus `LOGIN_EMAIL_RATE_LIMIT_MAX` per account |
   | Password change, account deletion, key save/test | The auth limiter |
   | New infographics, regenerations and jobs | `JOB_CREATE_RATE_LIMIT_PER_MINUTE` per user |

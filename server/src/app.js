@@ -10,7 +10,7 @@ import cookieParser from 'cookie-parser';
 import pinoHttp from 'pino-http';
 import { createApiRouter } from './routes/index.js';
 import { createApiLimiter } from './middleware/rateLimit.js';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { errorHandler, notFoundHandler, isAdminPauseResponse } from './middleware/errorHandler.js';
 import { mountMcp } from './mcp/http.js';
 
 /** Replace the capability token in /webhooks/:provider/:jobId/:token URLs. */
@@ -74,7 +74,8 @@ export function createApp({ env, logger }) {
       genReqId: (req) => req.headers['x-request-id'] || randomUUID(),
       autoLogging: { ignore: (req) => req.url === '/api/health' || req.url === '/api/ready' },
       customLogLevel: (_req, res, err) => {
-        if (err || res.statusCode >= 500) return 'error';
+        if (err) return 'error';
+        if (res.statusCode >= 500 && !isAdminPauseResponse(res)) return 'error';
         if (res.statusCode >= 400) return 'warn';
         return 'info';
       },

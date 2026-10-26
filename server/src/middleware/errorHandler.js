@@ -2,6 +2,15 @@
 // async handlers here automatically, so controllers can simply `throw`.
 import { AppError, NotFoundError } from '../utils/errors.js';
 
+// 503s an administrator switched on deliberately (Admin > Access). They are
+// logged as warnings so the operations log's errors stay real failures.
+const ADMIN_PAUSE_CODES = new Set(['GENERATION_PAUSED', 'MAINTENANCE', 'MCP_DISABLED']);
+
+/** True when this response is an intentional admin pause (set by errorHandler). */
+export function isAdminPauseResponse(res) {
+  return res.locals?.adminPause === true;
+}
+
 export function notFoundHandler(req, _res, next) {
   next(new NotFoundError(`Route ${req.method} ${req.originalUrl} not found`));
 }
@@ -52,7 +61,10 @@ export function errorHandler(err, req, res, _next) {
   const log = req.log || console;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  if (statusCode >= 500) {
+  if (ADMIN_PAUSE_CODES.has(code)) {
+    res.locals.adminPause = true;
+    log.warn({ code, statusCode, requestId: req.id }, 'Request refused: paused by an administrator');
+  } else if (statusCode >= 500) {
     log.error({ err, requestId: req.id }, 'Unhandled error');
   } else {
     log.warn({ code, statusCode, requestId: req.id, reason: err?.message }, 'Request error');

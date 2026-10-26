@@ -12,7 +12,8 @@ export const AuthContext = createContext(null);
 //   unauthenticated  no session (redirect to login)
 //   suspended        the account is suspended (redirect to login with a notice)
 //   unavailable      the auth endpoints do not exist (backend phase missing)
-//   error            the API or its database could not be reached
+//   error            the API or its database could not be reached, or it is
+//                    rate limiting this address (code RATE_LIMITED)
 //
 // "Preview mode" only exists for the "unavailable" case: an explicit,
 // user-triggered switch that lets the UI be browsed without a backend. It is

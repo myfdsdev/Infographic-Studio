@@ -92,6 +92,7 @@ export default function Providers() {
                     <td>
                       <Switch
                         label={model.enabled ? 'On' : 'Off'}
+                        ariaLabel={`${model.label} available`}
                         checked={model.enabled}
                         onChange={(enabled) => setPending({ provider: provider.key, model, enabled })}
                       />

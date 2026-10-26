@@ -9,17 +9,26 @@ import { useBranding } from '../hooks/useBranding.js';
 
 /**
  * Shown when the session cannot be checked: the API is unreachable, its
- * database is down, or (only before the auth backend existed) the auth
- * endpoints are missing. Nothing is faked.
+ * database is down, the API is rate limiting this address, or (only before
+ * the auth backend existed) the auth endpoints are missing. Nothing is faked.
  */
 function AuthUnavailable({ status, error, onRetry, onPreview }) {
   const { appName } = useBranding();
   const databaseDown = error?.code === 'DATABASE_UNAVAILABLE';
-  const unreachable = status === 'error' && !databaseDown;
-  const title = databaseDown ? 'Database not connected' : unreachable ? 'API not reachable' : 'Sign-in not connected yet';
+  const rateLimited = error?.code === 'RATE_LIMITED';
+  const unreachable = status === 'error' && !databaseDown && !rateLimited;
+  const title = databaseDown
+    ? 'Database not connected'
+    : rateLimited
+      ? 'Too many requests'
+      : unreachable
+        ? 'API not reachable'
+        : 'Sign-in not connected yet';
   const subtitle = databaseDown
     ? 'The API is running but cannot reach MongoDB. Check MONGODB_URI in server/.env or start a local database with "npm run db:dev", then retry.'
-    : unreachable
+    : rateLimited
+      ? `${appName} received a lot of requests from your connection in a short time. Wait a minute, then retry.`
+      : unreachable
       ? `The client could not reach the ${appName} API${error?.message ? ` (${error.message})` : ''}. Start the server and try again.`
       : 'The authentication backend is not available. You can browse every screen in preview mode.';
 

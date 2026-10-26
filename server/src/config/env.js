@@ -137,7 +137,7 @@ const envSchema = z
     GOOGLE_JWKS_URL: z.string().url().default('https://www.googleapis.com/oauth2/v3/certs'),
 
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(15 * 60 * 1000),
-    RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(300),
+    RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(1000),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
     LOGIN_EMAIL_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
 

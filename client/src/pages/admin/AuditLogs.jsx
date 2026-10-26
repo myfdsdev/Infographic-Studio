@@ -31,6 +31,16 @@ const OUTCOMES = [
   { value: 'failure', label: 'Failure' },
 ];
 
+// Database ids are shortened to their last 6 characters; other target ids
+// (such as "platform" for settings) are names and are shown in full.
+function targetLabel(entry) {
+  if (entry.targetEmail) return entry.targetEmail;
+  if (!entry.targetType) return '-';
+  const id = entry.targetId || '';
+  const shown = /^[0-9a-f]{24}$/i.test(id) ? id.slice(-6) : id;
+  return `${titleCase(entry.targetType)} ${shown}`.trim();
+}
+
 export default function AuditLogs() {
   const { refreshKey } = useOutletContext() || {};
   const [search, setSearch] = useState('');
@@ -116,7 +126,7 @@ export default function AuditLogs() {
                         <span className="iv-table__sub">{titleCase(entry.area)}</span>
                       </td>
                       <td>{entry.actorEmail || <span className="iv-dim">anonymous</span>}</td>
-                      <td>{entry.targetEmail || (entry.targetType ? `${titleCase(entry.targetType)} ${entry.targetId?.slice(-6) || ''}` : '-')}</td>
+                      <td>{targetLabel(entry)}</td>
                       <td>
                         <Button variant="secondary" size="sm" onClick={() => setSelected(entry)}>
                           Details

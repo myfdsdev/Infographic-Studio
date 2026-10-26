@@ -9,13 +9,23 @@ import { normalizeEmail } from '../utils/sanitize.js';
 
 const HEALTH_PATHS = new Set(['/health', '/ready']);
 
+// Image reads are not counted: a gallery page loads one per card, so counting
+// them would lock out normal browsing. They stay behind authentication and
+// ownership checks, and the browser caches them.
+const IMAGE_PATHS = [/^\/infographics\/[^/]+\/image$/, /^\/branding\/(logo|favicon)$/];
+
+function isExempt(req) {
+  if (HEALTH_PATHS.has(req.path)) return true;
+  return (req.method === 'GET' || req.method === 'HEAD') && IMAGE_PATHS.some((re) => re.test(req.path));
+}
+
 export function createApiLimiter(env) {
   return rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
     limit: env.RATE_LIMIT_MAX,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    skip: (req) => HEALTH_PATHS.has(req.path),
+    skip: isExempt,
     handler: (_req, _res, next) => next(new TooManyRequestsError()),
   });
 }
