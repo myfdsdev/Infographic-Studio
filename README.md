@@ -1,6 +1,6 @@
 # AI Infographic Studio
 
-AI Infographic Studio is a small MERN SaaS that turns a topic into a professional infographic image. A user describes the topic, picks a style (minimal, corporate or colorful) and an aspect ratio (1:1, 3:4 or 9:16). The server then generates the image with **Z-Image on Kie.ai**, using **that user's own Kie.ai API key**. The finished PNG is stored privately in the user's history, where it can be viewed, downloaded, regenerated or deleted.
+AI Infographic Studio is a small MERN SaaS that turns a topic into a professional infographic image. A user describes the topic, picks an infographic type (smart layout, tips list, step-by-step, timeline, comparison, pros and cons, statistics, cycle or mind map), a visual style (minimal, corporate, colorful, dark neon, pastel, hand-drawn, isometric 3D, retro or gradient) and an aspect ratio (1:1, 3:4 or 9:16). The server then generates the image with **Z-Image on Kie.ai**, using **that user's own Kie.ai API key**. The finished PNG is stored privately in the user's history, where it can be viewed, downloaded, regenerated or deleted.
 
 The same feature is available to AI assistants (Claude, ChatGPT, Claude Code and other MCP clients) through an OAuth-protected MCP server. Administrators get an admin panel with users, generations, jobs, failures, MCP monitoring, provider models, access switches, audit logs, operations and branding.
 

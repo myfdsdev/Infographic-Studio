@@ -23,6 +23,7 @@ import GeneratingLoader from "../components/common/GeneratingLoader.jsx";
 import Lightbox from "../components/infographic/Lightbox.jsx";
 import ErrorHelp from "../components/infographic/ErrorHelp.jsx";
 import {
+  LayoutSelect,
   StyleSelect,
   RatioSelect,
 } from "../components/infographic/Pickers.jsx";
@@ -39,6 +40,7 @@ import {
 } from "../services/infographicApi.js";
 import { errorMessage } from "../services/api.js";
 import {
+  INFOGRAPHIC_LAYOUTS,
   INFOGRAPHIC_STYLES,
   INFOGRAPHIC_STATUSES,
   TOPIC_MIN,
@@ -51,12 +53,39 @@ import { formatRelative } from "../utils/formatters.js";
 const STYLE_LABEL = Object.fromEntries(
   INFOGRAPHIC_STYLES.map((s) => [s.value, s.label]),
 );
+const LAYOUT_LABEL = Object.fromEntries(
+  INFOGRAPHIC_LAYOUTS.map((l) => [l.value, l.label]),
+);
 const FEED_SIZE = 30;
+// Each example also picks the infographic type that suits it.
 const EXAMPLES = [
-  "5 benefits of AI automation for small businesses",
-  "How compound interest grows your savings over 10 years",
-  "The water cycle explained in 4 simple steps",
+  { text: "5 benefits of AI automation for small businesses", layout: "list" },
+  {
+    text: "How to launch a podcast in 6 steps: plan, equipment, record, edit, publish, promote",
+    layout: "steps",
+  },
+  {
+    text: "Remote work vs office work: flexibility, focus, teamwork, commute and cost",
+    layout: "comparison",
+  },
+  {
+    text: "The water cycle: evaporation, condensation, precipitation and collection",
+    layout: "cycle",
+  },
 ];
+
+/** "Timeline · Dark Neon · 3:4"; the default Smart layout is not named. */
+function settingsLabel(item) {
+  return [
+    item.layout && item.layout !== "auto"
+      ? LAYOUT_LABEL[item.layout] || item.layout
+      : null,
+    STYLE_LABEL[item.style] || item.style,
+    item.aspectRatio,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /** Steps shown while generating, from what the server reports. */
 function stepsFor(item) {
@@ -144,8 +173,7 @@ function FeedTile({ item, selected, onOpen }) {
       <span className="iv-tile__overlay">
         <span className="iv-tile__title">{item.title}</span>
         <span className="iv-tile__meta">
-          {STYLE_LABEL[item.style] || item.style} · {item.aspectRatio} ·{" "}
-          {formatRelative(item.createdAt)}
+          {settingsLabel(item)} · {formatRelative(item.createdAt)}
         </span>
       </span>
     </button>
@@ -189,7 +217,7 @@ function HistoryItem({ item, selected, onOpen }) {
               ? item.status === "cancelled"
                 ? "Cancelled"
                 : "Failed"
-              : `${STYLE_LABEL[item.style] || item.style} · ${item.aspectRatio}`}
+              : settingsLabel(item)}
           {!activeItem && <> · {formatRelative(item.createdAt)}</>}
         </span>
       </span>
@@ -224,6 +252,7 @@ export default function CreateInfographic() {
   const currentId = params.get("id");
 
   const [topic, setTopic] = useState("");
+  const [layout, setLayout] = useState("auto");
   const [style, setStyle] = useState("minimal");
   const [aspectRatio, setAspectRatio] = useState("3:4");
   const [topicError, setTopicError] = useState(null);
@@ -269,6 +298,7 @@ export default function CreateInfographic() {
     if (item && loadedFor.current !== item.id) {
       loadedFor.current = item.id;
       setTopic(item.topic);
+      setLayout(item.layout || "auto");
       setStyle(item.style);
       setAspectRatio(LEGACY_RATIOS[item.aspectRatio] || item.aspectRatio);
     }
@@ -325,7 +355,7 @@ export default function CreateInfographic() {
     }
     start(() =>
       infographicApi.create(
-        { topic: trimmed, style, aspectRatio },
+        { topic: trimmed, layout, style, aspectRatio },
         { idempotencyKey: newIdempotencyKey() },
       ),
     );
@@ -352,8 +382,9 @@ export default function CreateInfographic() {
     stageRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const fillExample = (text) => {
+  const fillExample = ({ text, layout: exampleLayout }) => {
     setTopic(text);
+    setLayout(exampleLayout);
     setTopicError(null);
     promptRef.current?.focus();
   };
@@ -454,6 +485,12 @@ export default function CreateInfographic() {
             {item && (
               <div className="iv-viewer__meta">
                 <StatusBadge status={item.status} map={INFOGRAPHIC_STATUSES} />
+                {item.layout && item.layout !== "auto" && (
+                  <>
+                    <span>{LAYOUT_LABEL[item.layout] || item.layout}</span>
+                    <i aria-hidden="true" />
+                  </>
+                )}
                 <span>{STYLE_LABEL[item.style] || item.style}</span>
                 <i aria-hidden="true" />
                 <span>{item.aspectRatio}</span>
@@ -559,49 +596,92 @@ export default function CreateInfographic() {
           Infographic Studio
         </h1>
         <p className="iv-start__lead">
-          Pick a look, describe your topic below, and generate a ready-to-share
-          infographic in about a minute.
+          Pick a type and a look, describe your topic below, and generate a
+          ready-to-share infographic in about a minute.
         </p>
       </div>
 
-      <div className="iv-showcase" role="radiogroup" aria-label="Visual style">
-        {INFOGRAPHIC_STYLES.map((option) => {
-          const selected = option.value === style;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              className={`iv-showcase__card ${selected ? "is-selected" : ""}`}
-              onClick={() => setStyle(option.value)}
-              disabled={busy}
-            >
-              <span className="iv-showcase__art">
-                <StylePoster style={option.value} />
-                {selected && (
-                  <span className="iv-showcase__check">
-                    <Check size={14} aria-hidden="true" />
-                  </span>
-                )}
-              </span>
-              <span className="iv-showcase__name">{option.label}</span>
-              <span className="iv-showcase__desc">{option.description}</span>
-            </button>
-          );
-        })}
+      <div className="iv-start__section">
+        <h2 className="iv-start__section-title" id="studio-type-title">
+          Infographic type
+        </h2>
+        <div
+          className="iv-layouts"
+          role="radiogroup"
+          aria-labelledby="studio-type-title"
+        >
+          {INFOGRAPHIC_LAYOUTS.map((option) => {
+            const selected = option.value === layout;
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={`iv-layout-pill ${selected ? "is-selected" : ""}`}
+                onClick={() => setLayout(option.value)}
+                disabled={busy}
+                title={option.description}
+              >
+                <Icon size={16} aria-hidden="true" />
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="iv-start__section">
+        <h2 className="iv-start__section-title" id="studio-style-title">
+          Visual style
+        </h2>
+        <div
+          className="iv-showcase"
+          role="radiogroup"
+          aria-labelledby="studio-style-title"
+        >
+          {INFOGRAPHIC_STYLES.map((option) => {
+            const selected = option.value === style;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={`iv-showcase__card ${selected ? "is-selected" : ""}`}
+                onClick={() => setStyle(option.value)}
+                disabled={busy}
+              >
+                <span className="iv-showcase__art">
+                  <StylePoster style={option.value} />
+                  {selected && (
+                    <span className="iv-showcase__check">
+                      <Check size={14} aria-hidden="true" />
+                    </span>
+                  )}
+                </span>
+                <span className="iv-showcase__name">{option.label}</span>
+                <span className="iv-showcase__desc">{option.description}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="iv-start__examples">
         <span className="iv-start__examples-label">Try an example</span>
-        {EXAMPLES.map((text) => (
+        {EXAMPLES.map((example) => (
           <button
-            key={text}
+            key={example.text}
             type="button"
             className="iv-example"
-            onClick={() => fillExample(text)}
+            onClick={() => fillExample(example)}
           >
-            {text}
+            <span className="iv-example__type">
+              {LAYOUT_LABEL[example.layout]}
+            </span>
+            {example.text}
             <ArrowUp size={14} aria-hidden="true" />
           </button>
         ))}
@@ -705,6 +785,11 @@ export default function CreateInfographic() {
             />
             <div className="iv-composer__bar">
               <div className="iv-composer__chips">
+                <LayoutSelect
+                  value={layout}
+                  onChange={setLayout}
+                  disabled={busy}
+                />
                 <StyleSelect
                   value={style}
                   onChange={setStyle}

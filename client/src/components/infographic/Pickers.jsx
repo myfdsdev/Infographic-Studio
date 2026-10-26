@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Palette } from 'lucide-react';
-import { INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS } from '../../utils/constants.js';
+import { INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS, INFOGRAPHIC_LAYOUTS } from '../../utils/constants.js';
+
+// Styles drawn as a title bar and three dots (the others have their own shapes).
+const DOT_SWATCHES = new Set(['colorful', 'dark', 'pastel', 'sketch', 'isometric', 'retro', 'gradient']);
 
 /**
  * A composer chip that opens a small menu above itself. `options` are
@@ -82,7 +85,7 @@ function StyleSwatch({ style }) {
       <span />
       <span />
       <span />
-      {style === 'colorful' && <span />}
+      {DOT_SWATCHES.has(style) && <span />}
     </span>
   );
 }
@@ -96,7 +99,7 @@ function RatioShape({ ratio, size = 16 }) {
   );
 }
 
-/** Minimal, Corporate or Colorful, as a composer chip. */
+/** The visual style (Minimal, Dark Neon, Hand-drawn, ...), as a composer chip. */
 export function StyleSelect({ value, onChange, disabled, styles = INFOGRAPHIC_STYLES }) {
   const current = styles.find((s) => s.value === value) || styles[0];
   return (
@@ -109,6 +112,33 @@ export function StyleSelect({ value, onChange, disabled, styles = INFOGRAPHIC_ST
       onChange={onChange}
       disabled={disabled}
       options={styles.map((s) => ({ ...s, visual: <StyleSwatch style={s.value} /> }))}
+    />
+  );
+}
+
+/** The content structure (Smart layout, Timeline, Comparison, ...), as a composer chip. */
+export function LayoutSelect({ value, onChange, disabled, layouts = INFOGRAPHIC_LAYOUTS }) {
+  const current = layouts.find((l) => l.value === value) || layouts[0];
+  const Icon = current.icon;
+  return (
+    <ChipSelect
+      label="Type"
+      menuLabel="Infographic type"
+      icon={<Icon size={16} className="iv-chip__icon" aria-hidden="true" />}
+      valueLabel={current.label}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      options={layouts.map(({ value: id, label, description, icon: OptionIcon }) => ({
+        value: id,
+        label,
+        description,
+        visual: (
+          <span className="iv-layout-icon" aria-hidden="true">
+            <OptionIcon size={18} />
+          </span>
+        ),
+      }))}
     />
   );
 }

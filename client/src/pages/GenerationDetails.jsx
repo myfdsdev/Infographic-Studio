@@ -16,10 +16,11 @@ import { useKeyStatus } from '../hooks/useKeyStatus.js';
 import { useToast } from '../hooks/useToast.js';
 import { infographicApi, imageUrl, downloadUrl, newIdempotencyKey } from '../services/infographicApi.js';
 import { errorMessage } from '../services/api.js';
-import { INFOGRAPHIC_STATUSES, INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS, ROUTES } from '../utils/constants.js';
+import { INFOGRAPHIC_STATUSES, INFOGRAPHIC_STYLES, INFOGRAPHIC_LAYOUTS, INFOGRAPHIC_RATIOS, ROUTES } from '../utils/constants.js';
 import { formatDateTime, formatBytes } from '../utils/formatters.js';
 
 const STYLE_LABEL = Object.fromEntries(INFOGRAPHIC_STYLES.map((s) => [s.value, s.label]));
+const LAYOUT_LABEL = Object.fromEntries(INFOGRAPHIC_LAYOUTS.map((l) => [l.value, l.label]));
 const RATIO_LABEL = Object.fromEntries(INFOGRAPHIC_RATIOS.map((r) => [r.value, r.label]));
 
 /** One infographic: full image, settings, download, regenerate and delete. */
@@ -106,6 +107,10 @@ export default function GenerationDetails() {
         <div className="d-flex flex-column gap-3">
           <Card title="Details">
             <dl className="iv-kv">
+              <div className="iv-kv__row">
+                <dt>Type</dt>
+                <dd>{LAYOUT_LABEL[item.layout || 'auto'] || item.layout}</dd>
+              </div>
               <div className="iv-kv__row">
                 <dt>Style</dt>
                 <dd>{STYLE_LABEL[item.style] || item.style}</dd>

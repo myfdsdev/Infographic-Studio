@@ -70,6 +70,7 @@ test('generate_infographic runs on the user\'s own key and is tracked by get_gen
   const started = ok(await callTool(ctx.app, alice.token, 'generate_infographic', REQUEST));
   assert.match(started.infographic_id, /^[a-f0-9]{24}$/);
   assert.equal(started.style, 'corporate');
+  assert.equal(started.layout, 'auto');
   assert.equal(started.aspect_ratio, '3:4');
   assert.equal(started.source, 'mcp');
   assert.equal(started.deduplicated, false);
@@ -176,4 +177,18 @@ test('tool calls are audited with the topic reduced to its length', async () => 
   assert.ok(entry);
   assert.equal(entry.metadata.args.topic, `[text, ${TOPIC.length} chars]`);
   assert.ok(!JSON.stringify(entry).includes(KEY));
+});
+
+test('generate_infographic accepts a layout and the newer styles', async () => {
+  const bob = await connectedUser();
+  const started = ok(
+    await callTool(ctx.app, bob.token, 'generate_infographic', { ...REQUEST, layout: 'comparison', style: 'sketch', idempotency_key: 'layout_test_1' }),
+  );
+  assert.equal(started.layout, 'comparison');
+  assert.equal(started.style, 'sketch');
+  const { LAYOUTS } = await import('../../src/services/infographicPrompt.js');
+  const stored = await ctx.models.Infographic.findById(started.infographic_id).lean();
+  assert.ok(stored.prompt.includes(LAYOUTS.comparison.directive));
+  const refused = await callTool(ctx.app, bob.token, 'generate_infographic', { ...REQUEST, layout: 'spiral', idempotency_key: 'layout_test_2' });
+  assert.equal(refused.body.result?.isError ?? Boolean(refused.body.error), true);
 });

@@ -8,7 +8,7 @@ import pkg from '../../package.json' with { type: 'json' };
 
 const INSTRUCTIONS = [
   "AI Infographic Studio turns a topic into a professional infographic image with Z-Image (Kie.ai), using the user's own Kie.ai API key.",
-  "Typical flow: generate_infographic (topic, style minimal|corporate|colorful, aspect_ratio 1:1|3:4|9:16) -> get_generation_status every 15-30 seconds until completed -> the user views or downloads it at web_url.",
+  "Typical flow: generate_infographic (topic, optional layout such as steps|timeline|comparison|statistics, style such as minimal|corporate|dark|sketch, aspect_ratio 1:1|3:4|9:16) -> get_generation_status every 15-30 seconds until completed -> the user views or downloads it at web_url.",
   "generate_infographic spends the user's Kie.ai credits: describe what will be generated and get the user's agreement first, then pass confirm_paid_generation: true.",
   "list_infographics and get_infographic read the user's history. Only the signed-in user's own infographics are ever returned.",
 ].join(' ');

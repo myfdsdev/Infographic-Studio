@@ -64,7 +64,7 @@ All tools call the same `infographic.service.js` as the dashboard, as the token'
 
 | Tool | Input | What it does |
 |---|---|---|
-| `generate_infographic` | `topic` (10-2000 chars), `style` (`minimal` \| `corporate` \| `colorful`), `aspect_ratio` (`1:1` \| `4:5` \| `9:16`), `confirm_paid_generation: true` (required), `idempotency_key` (optional, 8-60 letters, digits, `-`, `_`) | Starts one infographic and returns at once with `infographic_id`, the details, `deduplicated`, a `charges` note and `next_steps`. |
+| `generate_infographic` | `topic` (10-400 chars), `layout` (optional: `auto` \| `list` \| `steps` \| `timeline` \| `comparison` \| `pros_cons` \| `statistics` \| `cycle` \| `mindmap`), `style` (`minimal` \| `corporate` \| `colorful` \| `dark` \| `pastel` \| `sketch` \| `isometric` \| `retro` \| `gradient`), `aspect_ratio` (`1:1` \| `3:4` \| `9:16`), `confirm_paid_generation: true` (required), `idempotency_key` (optional, 8-60 letters, digits, `-`, `_`) | Starts one infographic and returns at once with `infographic_id`, the details, `deduplicated`, a `charges` note and `next_steps`. |
 | `get_generation_status` | `infographic_id` | `status`, `finished`, `message`, image info when ready (width, height, type, size, `download_url`), error, `web_url`, `next_step`. |
 | `list_infographics` | `status` (`all` \| `active` \| `completed` \| `failed` \| `cancelled`), `page`, `limit` (1-50, default 20) | The user's history, newest first, with `web_url` per item. |
 | `get_infographic` | `infographic_id` | Full details: topic, style, ratio, model, source, status, progress, image info, error, `regenerated_from`, `web_url`. |

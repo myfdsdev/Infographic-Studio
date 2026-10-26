@@ -10,8 +10,8 @@ export const infographicApi = {
   list: (query, options) => api.get('/infographics', { ...options, query }),
   get: (id, options) => api.get(`/infographics/${enc(id)}`, options),
   /** Start a generation on the user's own Kie.ai key. */
-  create: ({ topic, style, aspectRatio }, { idempotencyKey } = {}) =>
-    api.post('/infographics', { topic, style, aspectRatio }, idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined),
+  create: ({ topic, layout, style, aspectRatio }, { idempotencyKey } = {}) =>
+    api.post('/infographics', { topic, layout, style, aspectRatio }, idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined),
   regenerate: (id, { idempotencyKey } = {}) =>
     api.post(`/infographics/${enc(id)}/regenerate`, {}, idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined),
   remove: (id) => api.delete(`/infographics/${enc(id)}`),

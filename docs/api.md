@@ -110,15 +110,16 @@ Every route acts on the caller's own infographics only. Another user's id answer
 | `GET /` | `?status=all\|active\|queued\|processing\|completed\|failed\|cancelled&page=&limit=` (limit 1-100, default 24) | `{ items, total, page, limit, pages }`, newest first. |
 | `POST /` | `{ topic, style, aspectRatio, idempotencyKey? }` | `202 { infographic, deduplicated: false }` for a new generation. `200 { infographic, deduplicated: true }` when the same idempotency key was used before, or an identical request is still active from the last two minutes. |
 | `GET /:id` | none | `{ infographic }`, with live `progress` while it runs. |
-| `POST /:id/regenerate` | `{ idempotencyKey? }` | A **new** infographic with the same topic, style and ratio (`regeneratedFrom` set): `202` (or `200` when deduplicated). |
+| `POST /:id/regenerate` | `{ idempotencyKey? }` | A **new** infographic with the same topic, layout, style and ratio (`regeneratedFrom` set): `202` (or `200` when deduplicated). |
 | `GET /:id/image` | `?download=1` | The PNG bytes, owner only. `Content-Disposition: inline`, or `attachment; filename="<title-slug>-<id-suffix>.png"` with `download=1`. `Cache-Control: private, max-age=300`, `X-Content-Type-Options: nosniff`, `Cross-Origin-Resource-Policy: same-site`. `404 IMAGE_NOT_READY` before completion. |
 | `DELETE /:id` | none | `{ ok: true }`. Removes the record and its stored image. `409 INFOGRAPHIC_ACTIVE` while queued or processing. |
 
 Body rules:
 
-- `topic`: 10 to 2000 characters after trimming. Control characters are removed and whitespace is collapsed.
-- `style`: `minimal`, `corporate` or `colorful`.
-- `aspectRatio`: `1:1`, `4:5` or `9:16`.
+- `topic`: 10 to 400 characters after trimming. Control characters are removed and whitespace is collapsed.
+- `layout`: optional content structure, `auto` (default), `list`, `steps`, `timeline`, `comparison`, `pros_cons`, `statistics`, `cycle` or `mindmap`.
+- `style`: `minimal`, `corporate`, `colorful`, `dark`, `pastel`, `sketch`, `isometric`, `retro` or `gradient`.
+- `aspectRatio`: `1:1`, `3:4` or `9:16`.
 - `idempotencyKey`: optional, 8 to 100 characters from letters, digits, `-` and `_`. An `Idempotency-Key` header in the same format is also accepted.
 
 Unknown fields are rejected.
@@ -126,7 +127,7 @@ Unknown fields are rejected.
 Example:
 
 ```json
-{ "topic": "5 benefits of AI automation for small businesses", "style": "corporate", "aspectRatio": "4:5" }
+{ "topic": "5 benefits of AI automation for small businesses", "layout": "list", "style": "corporate", "aspectRatio": "3:4" }
 ```
 
 Every generation runs `z-image` (PNG output; prompt capped at 1000 characters, so topics at 400) on the caller's own Kie.ai key. Aspect ratios are 1:1, 3:4 and 9:16; older 4:5 records regenerate as 3:4. Errors raised before anything is created:
@@ -135,7 +136,7 @@ Every generation runs `z-image` (PNG output; prompt capped at 1000 characters, s
 |---|---|
 | `400 NO_API_KEY` | The caller has not saved a Kie.ai key. |
 | `400 API_KEY_INVALID` | Kie.ai rejected the saved key. Replace it in API Settings. |
-| `400 VALIDATION_ERROR` | Short topic, unknown style or unsupported ratio. |
+| `400 VALIDATION_ERROR` | Short topic, unknown layout or style, or unsupported ratio. |
 | `503 GENERATION_PAUSED`, `400 MODEL_DISABLED` | Admin switches. |
 | `429` | Over `JOB_CREATE_RATE_LIMIT_PER_MINUTE`. |
 
@@ -146,8 +147,9 @@ Every generation runs `z-image` (PNG output; prompt capped at 1000 characters, s
   "id": "6ad0...",
   "title": "5 benefits of AI automation for small businesses",
   "topic": "5 benefits of AI automation for small businesses",
+  "layout": "list",
   "style": "corporate",
-  "aspectRatio": "4:5",
+  "aspectRatio": "3:4",
   "model": "z-image",
   "source": "web",
   "status": "completed",

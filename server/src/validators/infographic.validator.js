@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS } from '../models/Infographic.js';
+import { INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS, INFOGRAPHIC_LAYOUTS } from '../models/Infographic.js';
 import { TOPIC_MIN, TOPIC_MAX } from '../services/infographicPrompt.js';
 
 const idempotencyKey = z
@@ -15,6 +15,7 @@ export const createInfographicBody = z.strictObject({
     .max(TOPIC_MAX, `Keep the topic under ${TOPIC_MAX} characters`),
   style: z.enum(INFOGRAPHIC_STYLES, { error: `Choose a style: ${INFOGRAPHIC_STYLES.join(', ')}` }),
   aspectRatio: z.enum(INFOGRAPHIC_RATIOS, { error: `Choose an aspect ratio: ${INFOGRAPHIC_RATIOS.join(', ')}` }),
+  layout: z.enum(INFOGRAPHIC_LAYOUTS, { error: `Choose a layout: ${INFOGRAPHIC_LAYOUTS.join(', ')}` }).default('auto'),
   idempotencyKey,
 });
 

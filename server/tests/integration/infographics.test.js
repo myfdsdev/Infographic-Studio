@@ -34,6 +34,20 @@ beforeEach(() => {
   mock.state.sequence = ['waiting', 'generating', 'success'];
 });
 
+test('every layout, style and ratio fits the model prompt limit with the longest topic', async () => {
+  const { buildInfographicPrompt, LAYOUTS, STYLES, ASPECT_RATIOS, TOPIC_MAX, PROMPT_MAX } = await import('../../src/services/infographicPrompt.js');
+  const topic = 'w'.repeat(TOPIC_MAX);
+  for (const layout of Object.keys(LAYOUTS)) {
+    for (const style of Object.keys(STYLES)) {
+      for (const aspectRatio of Object.keys(ASPECT_RATIOS)) {
+        const prompt = buildInfographicPrompt({ topic, style, aspectRatio, layout });
+        assert.ok(prompt.length <= PROMPT_MAX, `${layout}/${style}/${aspectRatio} is ${prompt.length} characters`);
+        assert.ok(prompt.includes(LAYOUTS[layout].directive) && prompt.includes(STYLES[style].directive));
+      }
+    }
+  }
+});
+
 async function userWithKey() {
   const account = await signupAgent(ctx.app);
   const saved = await account.agent.put('/api/settings/credentials/kie').send({ apiKey: KEY });
@@ -41,11 +55,12 @@ async function userWithKey() {
   return account;
 }
 
-test('options list the three styles and three aspect ratios', async () => {
+test('options list the layouts, styles and three aspect ratios', async () => {
   const { agent } = await signupAgent(ctx.app);
   const res = await agent.get('/api/infographics/options');
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body.styles.map((s) => s.id), ['minimal', 'corporate', 'colorful']);
+  assert.deepEqual(res.body.layouts.map((l) => l.id), ['auto', 'list', 'steps', 'timeline', 'comparison', 'pros_cons', 'statistics', 'cycle', 'mindmap']);
+  assert.deepEqual(res.body.styles.map((s) => s.id), ['minimal', 'corporate', 'colorful', 'dark', 'pastel', 'sketch', 'isometric', 'retro', 'gradient']);
   assert.deepEqual(res.body.aspectRatios.map((r) => r.id), ['1:1', '3:4', '9:16']);
   assert.equal(res.body.model.id, 'z-image');
   assert.equal((await request(ctx.app).get('/api/infographics/options')).status, 401);
@@ -173,13 +188,14 @@ test('an unreadable result is retried and finally reported, never stored as an i
 
 test('regenerate makes a new infographic with the same settings; history is newest first', async () => {
   const { agent } = await userWithKey();
-  const first = await agent.post('/api/infographics').send({ ...BODY, style: 'corporate', aspectRatio: '3:4' });
+  const first = await agent.post('/api/infographics').send({ ...BODY, style: 'corporate', layout: 'timeline', aspectRatio: '3:4' });
   await settleInfographic(worker, ctx.models, first.body.infographic.id);
   const again = await agent.post(`/api/infographics/${first.body.infographic.id}/regenerate`).send({});
   assert.equal(again.status, 202);
   const second = again.body.infographic;
   assert.notEqual(second.id, first.body.infographic.id);
   assert.equal(second.style, 'corporate');
+  assert.equal(second.layout, 'timeline');
   assert.equal(second.aspectRatio, '3:4');
   assert.equal(second.regeneratedFrom, first.body.infographic.id);
   await settleInfographic(worker, ctx.models, second.id);
@@ -248,4 +264,27 @@ test('deleting the account removes its infographics and stored images', async ()
   assert.equal(res.status, 200, JSON.stringify(res.body));
   assert.equal(await ctx.models.Infographic.countDocuments({ userId: user.id }), 0);
   assert.equal(await ctx.models.Asset.countDocuments({ userId: user.id }), 0);
+});
+
+test('the chosen layout is stored and shapes the prompt; it defaults to auto and must be known', async () => {
+  const { agent } = await userWithKey();
+  const { LAYOUTS, STYLES } = await import('../../src/services/infographicPrompt.js');
+
+  const steps = await agent.post('/api/infographics').send({ ...BODY, layout: 'steps', style: 'dark' });
+  assert.equal(steps.status, 202, JSON.stringify(steps.body));
+  assert.equal(steps.body.infographic.layout, 'steps');
+  assert.equal(steps.body.infographic.style, 'dark');
+  const { prompt } = await ctx.models.Infographic.findById(steps.body.infographic.id).lean();
+  assert.ok(prompt.includes(LAYOUTS.steps.directive));
+  assert.ok(prompt.includes(STYLES.dark.directive));
+
+  const plain = await agent.post('/api/infographics').send(BODY);
+  assert.equal(plain.body.infographic.layout, 'auto');
+  const stored = await ctx.models.Infographic.findById(plain.body.infographic.id).lean();
+  assert.ok(stored.prompt.includes(LAYOUTS.auto.directive));
+
+  const bad = await agent.post('/api/infographics').send({ ...BODY, layout: 'spiral' });
+  assert.equal(bad.status, 400);
+  const badStyle = await agent.post('/api/infographics').send({ ...BODY, style: 'neon-pink' });
+  assert.equal(badStyle.status, 400);
 });

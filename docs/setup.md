@@ -123,7 +123,7 @@ Without a key, generation is refused (`NO_API_KEY`). With a key Kie.ai has rejec
 
 1. Open **Create Infographic** (the start page).
 2. Describe the topic in 10 to 2000 characters. Put any facts and figures you want shown into the topic, because the model is told not to invent statistics.
-3. Choose a style (**Minimal**, **Corporate** or **Colorful**) and an aspect ratio (**1:1** square, **4:5** portrait or **9:16** vertical).
+3. Choose an infographic type (such as **Step-by-step**, **Timeline**, **Comparison** or **Statistics**, or leave **Smart layout**), a visual style (such as **Minimal**, **Corporate**, **Dark Neon** or **Hand-drawn**) and an aspect ratio (**1:1** square, **3:4** portrait or **9:16** vertical).
 4. Generate. Each generation is one paid Z-Image task (PNG) on your Kie.ai account. Progress is shown live.
 5. **My Generations** lists your history. A generation's page has a full-size view, **Download**, **Regenerate** (a new image with the same settings) and **Delete**.
 

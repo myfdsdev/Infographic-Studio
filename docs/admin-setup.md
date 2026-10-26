@@ -31,7 +31,7 @@ The Admin Panel (`/admin`) shows its sections as one row of tabs. Every page rea
 
 | Tab | What it does |
 |---|---|
-| Overview | Generation usage: all-time results, success rate, styles chosen (minimal, corporate, colorful), and how many were started through MCP. Also provider jobs and MCP activity in the last 24 hours, system health (MongoDB, storage, email delivery) and recent sign-ups. |
+| Overview | Generation usage: all-time results, success rate, the most used infographic types and styles, and how many were started through MCP. Also provider jobs and MCP activity in the last 24 hours, system health (MongoDB, storage, email delivery) and recent sign-ups. |
 | Users | Search by name or email, filter by status and role, export CSV, open a user. |
 | User details | Account facts, active sessions, usage (infographics, completed, failed, jobs), Kie.ai key **status only**, and AI connections with **Revoke**. Also recent activity, suspend or reactivate with a reason, and change role. You cannot change your own account, and the last active admin cannot be removed. Suspension ends sessions and blocks AI-app tokens at once. **Act as user** is described below. |
 | Generations | Every user's infographics, newest first, with user email, title, style, ratio, source (web or MCP), status and redacted error. Search by email, title or id; filter by status. Prompts and keys are never shown. |

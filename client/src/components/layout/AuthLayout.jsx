@@ -26,7 +26,7 @@ export default function AuthLayout({ title, subtitle, children, footer, wide = f
               <span>
                 <Sparkles size={16} />
               </span>
-              Minimal, corporate or colorful styles in 1:1, 3:4 and 9:16
+              9 infographic types and 9 visual styles in 1:1, 3:4 and 9:16
             </li>
             <li>
               <span>

@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 
-export const INFOGRAPHIC_STYLES = Object.freeze(['minimal', 'corporate', 'colorful']);
+export const INFOGRAPHIC_STYLES = Object.freeze(['minimal', 'corporate', 'colorful', 'dark', 'pastel', 'sketch', 'isometric', 'retro', 'gradient']);
+// Content structure. Records made before layouts existed have none and are
+// treated as 'auto'.
+export const INFOGRAPHIC_LAYOUTS = Object.freeze(['auto', 'list', 'steps', 'timeline', 'comparison', 'pros_cons', 'statistics', 'cycle', 'mindmap']);
 // Ratios offered for new infographics (all native Z-Image sizes). 4:5 records
 // made before the switch from Nano Banana stay valid.
 export const INFOGRAPHIC_RATIOS = Object.freeze(['1:1', '3:4', '9:16']);
@@ -17,6 +20,7 @@ const infographicSchema = new mongoose.Schema(
     topic: { type: String, required: true, maxlength: 2000 },
     title: { type: String, required: true, maxlength: 120 },
     style: { type: String, enum: INFOGRAPHIC_STYLES, required: true },
+    layout: { type: String, enum: INFOGRAPHIC_LAYOUTS, default: 'auto' },
     aspectRatio: { type: String, enum: STORED_RATIOS, required: true },
     model: { type: String, required: true },
     // The full prompt sent to the provider (no credentials).

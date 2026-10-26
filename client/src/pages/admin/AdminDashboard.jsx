@@ -8,7 +8,16 @@ import { Skeleton } from '../../components/common/Loader.jsx';
 import { useApiResource } from '../../hooks/useApiResource.js';
 import { adminApi } from '../../services/adminApi.js';
 import { getReadiness } from '../../services/systemApi.js';
-import { ROUTES } from '../../utils/constants.js';
+import { ROUTES, INFOGRAPHIC_STYLES, INFOGRAPHIC_LAYOUTS } from '../../utils/constants.js';
+
+// The most used options first, so the card stays short as options grow.
+function topOptions(counts, options, limit = 4) {
+  const label = Object.fromEntries(options.map((o) => [o.value, o.label]));
+  return Object.entries(counts || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([value, count]) => ({ value, label: label[value] || value, count }));
+}
 import { displayNameOf, formatRelative } from '../../utils/formatters.js';
 
 function HealthRow({ icon: Icon, label, ok, detail, warn = false }) {
@@ -71,7 +80,7 @@ export default function AdminDashboard() {
 
       <div className="row g-4">
         <div className="col-lg-7 d-flex flex-column gap-4">
-          <Card title="Generation usage" subtitle="All-time results and the styles people choose." actions={<Link to={ROUTES.adminGenerations} className="small fw-semibold d-inline-flex align-items-center gap-1">Monitor <ArrowRight size={12} /></Link>}>
+          <Card title="Generation usage" subtitle="All-time results and the types and styles people choose." actions={<Link to={ROUTES.adminGenerations} className="small fw-semibold d-inline-flex align-items-center gap-1">Monitor <ArrowRight size={12} /></Link>}>
             {!ig ? (
               <p className="iv-muted mb-0">Statistics are not available.</p>
             ) : ig.total === 0 ? (
@@ -79,9 +88,12 @@ export default function AdminDashboard() {
             ) : (
               <div className="d-flex flex-column gap-3">
                 <Share label="Success rate (finished)" value={ig.completed} total={finished} />
-                <Share label="Minimal" value={ig.byStyle?.minimal || 0} total={ig.total} />
-                <Share label="Corporate" value={ig.byStyle?.corporate || 0} total={ig.total} />
-                <Share label="Colorful" value={ig.byStyle?.colorful || 0} total={ig.total} />
+                {topOptions(ig.byLayout, INFOGRAPHIC_LAYOUTS).map((option) => (
+                  <Share key={`layout-${option.value}`} label={`Type: ${option.label}`} value={option.count} total={ig.total} />
+                ))}
+                {topOptions(ig.byStyle, INFOGRAPHIC_STYLES).map((option) => (
+                  <Share key={`style-${option.value}`} label={`Style: ${option.label}`} value={option.count} total={ig.total} />
+                ))}
                 <Share label="Started through MCP" value={ig.bySource?.mcp || 0} total={ig.total} />
               </div>
             )}

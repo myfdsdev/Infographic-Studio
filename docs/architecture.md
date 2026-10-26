@@ -101,13 +101,14 @@ POST /api/infographics  (or MCP generate_infographic)
 ```
 
 - **Prompt builder** (`services/infographicPrompt.js`). The user's topic (control characters stripped, whitespace collapsed) is wrapped in fixed instructions:
-  - **composition:** a title, clearly separated sections with icons, a grid, short readable text, correct spelling;
+  - **layout directive:** the content structure, `auto` (default), `list`, `steps`, `timeline`, `comparison`, `pros_cons`, `statistics`, `cycle` or `mindmap`. Each one names its own composition (numbered cards, arrows between steps, a milestone line, two columns, big figures with simple charts, a loop, branches);
   - **format hint:** describes the chosen shape;
-  - **style directive:** `minimal`, `corporate` or `colorful`;
+  - **style directive:** `minimal`, `corporate`, `colorful`, `dark`, `pastel`, `sketch`, `isometric`, `retro` or `gradient`;
+  - **design quality:** headline and subtitle, strong hierarchy, one consistent icon set, an aligned grid, crisp correctly spelled text, no paragraphs;
   - **accuracy rules:** use only what the topic states or implies, or widely accepted general knowledge, and **never invent statistics**, percentages, numbers, dates, quotes, sources, brand names or scientific claims;
   - **avoid list:** real people's photos, logos, watermarks, placeholder text, gibberish, clutter, cut-off text.
 - **Model and output.** `z-image`, PNG (the model has no resolution setting). All three offered ratios (1:1, 3:4, 9:16) are native Z-Image `aspect_ratio` values, so the shape is sent as a parameter. The prompt only repeats it as a composition hint. Z-Image accepts at most 1000 prompt characters, so the fixed instructions are compact and topics are capped at 400 characters. Records made earlier at 4:5 stay valid and regenerate as 3:4.
-- **Regenerate** creates a **new** infographic with the same topic, style and ratio (`regeneratedFrom` points at the original). The original is kept.
+- **Regenerate** creates a **new** infographic with the same topic, layout, style and ratio (`regeneratedFrom` points at the original). The original is kept.
 - **Delete** is refused while the infographic is queued or processing (`409 INFOGRAPHIC_ACTIVE`). Otherwise the record is removed, and its stored image is removed when nothing else uses it.
 - **Saving the image** is claimed per record (`saving.claimedUntil`), so two workers never store it twice. A failed save is retried up to 3 times, then the infographic fails with the reason (for example `RESULT_DOWNLOAD_FAILED`, `RESULT_TOO_LARGE`). A key rejected while downloading (`PROVIDER_KEY_REJECTED`) fails at once.
 - The dashboard routes and the MCP tools both call `infographic.service.js`, so validation, ownership, BYOK and duplicate protection are identical.

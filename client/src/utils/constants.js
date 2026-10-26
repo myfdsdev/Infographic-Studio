@@ -15,6 +15,15 @@ import {
   ScrollText,
   Terminal,
   Palette,
+  WandSparkles,
+  ListOrdered,
+  Workflow,
+  GitCommitHorizontal,
+  Columns2,
+  Scale,
+  ChartColumnBig,
+  RefreshCw,
+  Network,
 } from 'lucide-react';
 
 export const APP_NAME = 'AI Infographic Studio';
@@ -135,6 +144,25 @@ export const INFOGRAPHIC_STYLES = Object.freeze([
   { value: 'minimal', label: 'Minimal', description: 'Simple layout, clean type, neutral colours.' },
   { value: 'corporate', label: 'Corporate', description: 'Structured sections, clear icons and diagrams.' },
   { value: 'colorful', label: 'Colorful', description: 'Vibrant, friendly illustrations, bold hierarchy.' },
+  { value: 'dark', label: 'Dark Neon', description: 'Dark background with glowing neon accents.' },
+  { value: 'pastel', label: 'Pastel', description: 'Soft pastel colours and rounded cards.' },
+  { value: 'sketch', label: 'Hand-drawn', description: 'Sketchnote lettering, doodles and arrows.' },
+  { value: 'isometric', label: 'Isometric 3D', description: 'Modern 3D illustrations with soft shadows.' },
+  { value: 'retro', label: 'Retro', description: 'Vintage poster, warm muted colours.' },
+  { value: 'gradient', label: 'Gradient', description: 'Purple-to-blue gradient, glassy cards.' },
+]);
+
+// What structure the content takes; independent of the visual style.
+export const INFOGRAPHIC_LAYOUTS = Object.freeze([
+  { value: 'auto', label: 'Smart layout', description: 'Picks the clearest structure for your topic.', icon: WandSparkles },
+  { value: 'list', label: 'Tips list', description: 'Numbered cards for tips, benefits or key points.', icon: ListOrdered },
+  { value: 'steps', label: 'Step-by-step', description: 'A numbered process joined by arrows.', icon: Workflow },
+  { value: 'timeline', label: 'Timeline', description: 'Milestones in order along a line.', icon: GitCommitHorizontal },
+  { value: 'comparison', label: 'Comparison', description: 'Two options side by side, point by point.', icon: Columns2 },
+  { value: 'pros_cons', label: 'Pros & cons', description: 'Advantages and drawbacks in two columns.', icon: Scale },
+  { value: 'statistics', label: 'Statistics', description: 'Big numbers and simple charts from your data.', icon: ChartColumnBig },
+  { value: 'cycle', label: 'Cycle', description: 'Stages that repeat in a loop.', icon: RefreshCw },
+  { value: 'mindmap', label: 'Mind map', description: 'A central idea with connected branches.', icon: Network },
 ]);
 
 export const INFOGRAPHIC_RATIOS = Object.freeze([

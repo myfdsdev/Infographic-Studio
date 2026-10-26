@@ -19,8 +19,12 @@ export async function get(req, res) {
 }
 
 export async function create(req, res) {
-  const { topic, style, aspectRatio } = req.validated.body;
-  const result = await infographicService.createInfographic(req.user, { topic, style, aspectRatio }, { idempotencyKey: idempotencyKeyFrom(req), req });
+  const { topic, style, layout, aspectRatio } = req.validated.body;
+  const result = await infographicService.createInfographic(
+    req.user,
+    { topic, style, layout, aspectRatio },
+    { idempotencyKey: idempotencyKeyFrom(req), req },
+  );
   res.status(result.deduplicated ? 200 : 202).json(result);
 }
 

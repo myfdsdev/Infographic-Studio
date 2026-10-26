@@ -7,7 +7,7 @@
 //
 // The dashboard routes and the MCP tools both call this service, so
 // validation, ownership, BYOK and duplicate protection are identical.
-import { Infographic, INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS } from '../models/Infographic.js';
+import { Infographic, INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS, INFOGRAPHIC_LAYOUTS } from '../models/Infographic.js';
 import { GenerationJob } from '../models/GenerationJob.js';
 import { getProvider } from '../providers/providerRegistry.js';
 import { TERMINAL_STATUSES } from '../jobs/queue.js';
@@ -48,6 +48,7 @@ export function toInfographicDto(item, job = null) {
     title: item.title,
     topic: item.topic,
     style: item.style,
+    layout: item.layout || 'auto',
     aspectRatio: item.aspectRatio,
     model: item.model,
     source: item.source,
@@ -71,15 +72,16 @@ export function toInfographicDto(item, job = null) {
   };
 }
 
-function validateInput({ topic, style, aspectRatio }) {
+function validateInput({ topic, style, aspectRatio, layout = 'auto' }) {
   const text = cleanTopic(topic);
   const details = {};
   if (text.length < TOPIC_MIN) details.topic = `Describe the topic in at least ${TOPIC_MIN} characters`;
   else if (text.length > TOPIC_MAX) details.topic = `Keep the topic under ${TOPIC_MAX} characters`;
   if (!INFOGRAPHIC_STYLES.includes(style)) details.style = `Choose one of: ${INFOGRAPHIC_STYLES.join(', ')}`;
   if (!INFOGRAPHIC_RATIOS.includes(aspectRatio)) details.aspectRatio = `Choose one of: ${INFOGRAPHIC_RATIOS.join(', ')}`;
+  if (!INFOGRAPHIC_LAYOUTS.includes(layout)) details.layout = `Choose one of: ${INFOGRAPHIC_LAYOUTS.join(', ')}`;
   if (Object.keys(details).length) throw new ValidationError(Object.values(details)[0], details);
-  return { topic: text, style, aspectRatio };
+  return { topic: text, style, aspectRatio, layout };
 }
 
 /**
@@ -96,7 +98,7 @@ export async function createInfographic(user, body, { idempotencyKey, source = '
     model: INFOGRAPHIC_MODEL,
     params: { prompt, aspectRatio: input.aspectRatio },
     subjectType: 'infographic',
-    subjectMeta: { style: input.style, aspectRatio: input.aspectRatio, source },
+    subjectMeta: { style: input.style, layout: input.layout, aspectRatio: input.aspectRatio, source },
     idempotencyKey,
   });
 
@@ -110,6 +112,7 @@ export async function createInfographic(user, body, { idempotencyKey, source = '
     topic: input.topic,
     title: titleFromTopic(input.topic),
     style: input.style,
+    layout: input.layout,
     aspectRatio: input.aspectRatio,
     model: job.model,
     prompt,
@@ -126,8 +129,8 @@ export async function createInfographic(user, body, { idempotencyKey, source = '
     action: source === 'mcp' ? 'infographic.created_via_mcp' : 'infographic.created',
     area: 'account',
     target: { type: 'infographic', id: item._id },
-    summary: `Infographic started (${input.style}, ${input.aspectRatio})${regeneratedFrom ? ' as a regeneration' : ''}`,
-    metadata: { style: input.style, aspectRatio: input.aspectRatio, source, topicLength: input.topic.length },
+    summary: `Infographic started (${input.layout}, ${input.style}, ${input.aspectRatio})${regeneratedFrom ? ' as a regeneration' : ''}`,
+    metadata: { style: input.style, layout: input.layout, aspectRatio: input.aspectRatio, source, topicLength: input.topic.length },
   });
 
   return { infographic: toInfographicDto(item, job), deduplicated: false };
@@ -178,7 +181,7 @@ export async function listInfographics(user, { status = 'all', page = 1, limit =
 }
 
 /**
- * A new infographic with the same topic, style and shape. Older records keep
+ * A new infographic with the same topic, layout, style and shape. Older records keep
  * a ratio or topic length Z-Image no longer takes, so those are brought into
  * range (4:5 becomes 3:4; a long topic is shortened at a word boundary).
  */
@@ -188,7 +191,12 @@ export async function regenerateInfographic(user, id, { idempotencyKey, source =
   if (topic.length > TOPIC_MAX) topic = topic.slice(0, TOPIC_MAX).replace(/\s+\S*$/, '').trim();
   return createInfographic(
     user,
-    { topic, style: original.style, aspectRatio: LEGACY_RATIOS[original.aspectRatio] || original.aspectRatio },
+    {
+      topic,
+      style: original.style,
+      layout: original.layout || 'auto',
+      aspectRatio: LEGACY_RATIOS[original.aspectRatio] || original.aspectRatio,
+    },
     { idempotencyKey, source, regeneratedFrom: original._id, req },
   );
 }
@@ -319,6 +327,7 @@ export function toAdminInfographicDto(item, userEmail) {
     userEmail: userEmail || null,
     title: item.title,
     style: item.style,
+    layout: item.layout || 'auto',
     aspectRatio: item.aspectRatio,
     source: item.source,
     status: item.status,
@@ -331,11 +340,12 @@ export function toAdminInfographicDto(item, userEmail) {
 
 export async function infographicStats() {
   const day = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [byStatus, created24h, bySource, byStyle] = await Promise.all([
+  const [byStatus, created24h, bySource, byStyle, byLayout] = await Promise.all([
     Infographic.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
     Infographic.countDocuments({ createdAt: { $gte: day } }),
     Infographic.aggregate([{ $group: { _id: '$source', count: { $sum: 1 } } }]),
     Infographic.aggregate([{ $group: { _id: '$style', count: { $sum: 1 } } }]),
+    Infographic.aggregate([{ $group: { _id: { $ifNull: ['$layout', 'auto'] }, count: { $sum: 1 } } }]),
   ]);
   const map = (rows) => Object.fromEntries(rows.map((row) => [row._id || 'unknown', row.count]));
   const status = map(byStatus);
@@ -349,6 +359,7 @@ export async function infographicStats() {
     created24h,
     bySource: map(bySource),
     byStyle: map(byStyle),
+    byLayout: map(byLayout),
   };
 }
 

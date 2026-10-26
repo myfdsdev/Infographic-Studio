@@ -13,8 +13,11 @@ import * as infographicService from '../services/infographic.service.js';
 import { loadActiveUser } from '../services/auth.service.js';
 import { assertGenerationAllowed } from '../services/platformSettings.service.js';
 import { recordAudit } from '../services/audit.service.js';
-import { INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS } from '../models/Infographic.js';
-import { TOPIC_MIN, TOPIC_MAX } from '../services/infographicPrompt.js';
+import { INFOGRAPHIC_STYLES, INFOGRAPHIC_RATIOS, INFOGRAPHIC_LAYOUTS } from '../models/Infographic.js';
+import { TOPIC_MIN, TOPIC_MAX, STYLES, LAYOUTS } from '../services/infographicPrompt.js';
+
+// "id (summary)" lists for the tool schema, built from the prompt definitions.
+const optionList = (defs) => Object.values(defs).map((d) => `${d.id} (${d.summary.replace(/\.$/, '').toLowerCase()})`).join(', ');
 import { AppError } from '../utils/errors.js';
 import { toolByName } from './toolCatalog.js';
 
@@ -149,6 +152,7 @@ function infographicSummary(item) {
   return {
     infographic_id: item.id,
     title: item.title,
+    layout: item.layout,
     style: item.style,
     aspect_ratio: item.aspectRatio,
     status: item.status,
@@ -164,6 +168,7 @@ function infographicDetails(item) {
     infographic_id: item.id,
     title: item.title,
     topic: item.topic,
+    layout: item.layout,
     style: item.style,
     aspect_ratio: item.aspectRatio,
     model: item.model,
@@ -250,7 +255,11 @@ export function registerTools(server, auth, requestMeta) {
           .min(TOPIC_MIN)
           .max(TOPIC_MAX)
           .describe('What the infographic should explain, e.g. "5 benefits of AI automation for small businesses". Facts and figures should come from the user; none are invented.'),
-        style: z.enum(INFOGRAPHIC_STYLES).describe('minimal (clean, neutral), corporate (structured business look) or colorful (vibrant, friendly illustrations)'),
+        layout: z
+          .enum(INFOGRAPHIC_LAYOUTS)
+          .optional()
+          .describe(`Optional content structure, default auto. One of: ${optionList(LAYOUTS)}`),
+        style: z.enum(INFOGRAPHIC_STYLES).describe(`Visual style. One of: ${optionList(STYLES)}`),
         aspect_ratio: z.enum(INFOGRAPHIC_RATIOS).describe('1:1 square, 3:4 portrait or 9:16 vertical'),
         idempotency_key: z
           .string()
@@ -264,7 +273,7 @@ export function registerTools(server, auth, requestMeta) {
     run('generate_infographic', async (user, args) => {
       requireScope(auth, 'infographics:write');
       await requireProviderKey(user);
-      const body = { topic: args.topic, style: args.style, aspectRatio: args.aspect_ratio };
+      const body = { topic: args.topic, layout: args.layout || 'auto', style: args.style, aspectRatio: args.aspect_ratio };
       // Without a key from the assistant, identical requests within about two
       // minutes map to the same generation, so a retried call does not pay twice.
       const window = Math.floor(Date.now() / 120000);
